@@ -1,5 +1,7 @@
 # Plico - Quick Poll Application
 
+**Plico: The fastest, most fun way to get to a final answer. Stop arguing. Just send a Plico.**
+
 A Next.js application for creating and sharing instant polls.
 
 ## Setup Instructions
