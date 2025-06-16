@@ -95,8 +95,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
         >
           <CountdownTimer 
             closesAt={new Date(poll.closesAt)} 
-            // Reload page when timer expires to show results
-            onExpire={() => window.location.reload()}
+            onExpire={() => onVoteComplete('timer_expired')}
           />
         </motion.div>
       )}

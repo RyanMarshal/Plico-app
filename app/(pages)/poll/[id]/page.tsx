@@ -72,6 +72,13 @@ function PollPage() {
       return
     }
     
+    // Handle timer expiration - just fetch fresh data and show results
+    if (votedOptionId === 'timer_expired') {
+      fetchPoll()
+      setShowResults(true)
+      return
+    }
+    
     // Optimistic UI update - immediately show results with the vote
     if (poll) {
       setPoll(prevPoll => {
