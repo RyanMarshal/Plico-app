@@ -1,31 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo, useCallback } from 'react'
 
 interface CountdownTimerProps {
   closesAt: Date
   onExpire?: () => void
 }
 
-export default function CountdownTimer({ closesAt, onExpire }: CountdownTimerProps) {
+const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0)
   const [isUrgent, setIsUrgent] = useState(false)
 
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime()
-      const target = new Date(closesAt).getTime()
-      const difference = target - now
+  const calculateTimeLeft = useCallback(() => {
+    const now = new Date().getTime()
+    const target = new Date(closesAt).getTime()
+    const difference = target - now
 
-      if (difference <= 0) {
-        setTimeLeft(0)
-        if (onExpire) onExpire()
-        return 0
-      }
-
-      setIsUrgent(difference <= 30000) // 30 seconds
-      return difference
+    if (difference <= 0) {
+      setTimeLeft(0)
+      if (onExpire) onExpire()
+      return 0
     }
+
+    setIsUrgent(difference <= 30000) // 30 seconds
+    return difference
+  }, [closesAt, onExpire])
+
+  useEffect(() => {
 
     // Initial calculation
     setTimeLeft(calculateTimeLeft())
@@ -41,7 +42,7 @@ export default function CountdownTimer({ closesAt, onExpire }: CountdownTimerPro
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [closesAt, onExpire])
+  }, [calculateTimeLeft])
 
   if (timeLeft === 0) {
     return (
@@ -81,4 +82,6 @@ export default function CountdownTimer({ closesAt, onExpire }: CountdownTimerPro
       </p>
     </div>
   )
-}
+})
+
+export default CountdownTimer

@@ -1,24 +1,28 @@
 'use client'
 
+import { memo, useMemo, useCallback } from 'react'
+
 interface ShareButtonsProps {
   url: string
   text: string
 }
 
-export default function ShareButtons({ url, text }: ShareButtonsProps) {
-  const encodedUrl = encodeURIComponent(url)
-  const encodedText = encodeURIComponent(text)
+const ShareButtons = memo(function ShareButtons({ url, text }: ShareButtonsProps) {
+  const shareLinks = useMemo(() => {
+    const encodedUrl = encodeURIComponent(url)
+    const encodedText = encodeURIComponent(text)
+    
+    return {
+      whatsapp: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+      telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    }
+  }, [url, text])
 
-  const shareLinks = {
-    whatsapp: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
-    telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
-    twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-  }
-
-  const handleShare = (platform: keyof typeof shareLinks) => {
+  const handleShare = useCallback((platform: keyof typeof shareLinks) => {
     window.open(shareLinks[platform], '_blank', 'width=600,height=400')
-  }
+  }, [shareLinks])
 
   return (
     <div className="flex items-center justify-center gap-3 mt-6">
@@ -65,4 +69,6 @@ export default function ShareButtons({ url, text }: ShareButtonsProps) {
       </button>
     </div>
   )
-}
+})
+
+export default ShareButtons

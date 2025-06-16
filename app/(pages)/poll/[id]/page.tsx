@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { PlicoWithResults } from '@/lib/types'
 import { hasVoted, getCreatorId } from '@/lib/cookies'
 import PollView from '@/components/plico/PollView'
 import ResultsView from '@/components/plico/ResultsView'
+import { motion } from 'framer-motion'
+import { MorphLoader } from '@/components/ui/plico-loader'
 
 export default function PollPage() {
   const params = useParams()
@@ -16,14 +18,7 @@ export default function PollPage() {
   const [showResults, setShowResults] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
 
-  useEffect(() => {
-    if (hasVoted(pollId)) {
-      setShowResults(true)
-    }
-    fetchPoll()
-  }, [pollId])
-
-  const fetchPoll = async () => {
+  const fetchPoll = useCallback(async () => {
     try {
       const response = await fetch(`/api/plico/${pollId}`)
       if (!response.ok) {
@@ -48,7 +43,14 @@ export default function PollPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [pollId])
+
+  useEffect(() => {
+    if (hasVoted(pollId)) {
+      setShowResults(true)
+    }
+    fetchPoll()
+  }, [pollId, fetchPoll])
 
   const handleVoteComplete = () => {
     fetchPoll()
@@ -88,8 +90,14 @@ export default function PollPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading poll...</p>
+          <MorphLoader size="lg" />
+          <motion.p 
+            className="text-gray-600 mt-4 font-medium"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            Loading poll...
+          </motion.p>
         </div>
       </div>
     )
@@ -98,18 +106,32 @@ export default function PollPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            {error === 'Poll not found' ? 'Poll Not Found' : 'Error'}
-          </h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <a
-            href="/"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 0.5 }}
+            className="text-6xl mb-4"
           >
-            Create a New Poll
-          </a>
-        </div>
+            😕
+          </motion.div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            {error === 'Poll not found' ? 'Poll Not Found' : 'Oops! Something went wrong'}
+          </h1>
+          <p className="text-gray-600 mb-8">{error}</p>
+          <motion.a
+            href="/"
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Create a New Poll →
+          </motion.a>
+        </motion.div>
       </div>
     )
   }
@@ -120,37 +142,58 @@ export default function PollPage() {
 
   return (
     <div className="container mx-auto py-12 px-4">
-      {showResults ? (
-        <ResultsView 
-          poll={poll} 
-          isCreator={isCreator}
-          onFinalize={handleFinalize}
-          onTimerExpire={handleTimerExpire}
-        />
-      ) : (
-        <PollView poll={poll} onVoteComplete={handleVoteComplete} />
-      )}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {showResults ? (
+          <ResultsView 
+            poll={poll} 
+            isCreator={isCreator}
+            onFinalize={handleFinalize}
+            onTimerExpire={handleTimerExpire}
+          />
+        ) : (
+          <PollView poll={poll} onVoteComplete={handleVoteComplete} />
+        )}
+      </motion.div>
       
-      <div className="text-center mt-8 space-y-4">
-        <button
+      <motion.div 
+        className="text-center mt-12 space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <motion.button
           onClick={() => window.location.href = `/poll/${pollId}/share`}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          className="inline-flex items-center px-6 py-3 border-2 border-purple-300 text-base font-semibold rounded-xl text-purple-700 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all shadow-md hover:shadow-lg"
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <motion.svg 
+            className="w-5 h-5 mr-2" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.032 4.026a9.001 9.001 0 01-7.432 3.974A9 9 0 113 12a9.001 9.001 0 017.432-3.974m1.867 4.026c.202-.404.316-.86.316-1.342 0-.482-.114-.938-.316-1.342m-1.867 2.684a3 3 0 110-2.684M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Share Poll
-        </button>
+          </motion.svg>
+          Share Poll with Friends
+        </motion.button>
         
         <div>
-          <a
+          <motion.a
             href="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold text-lg"
+            whileHover={{ scale: 1.05 }}
           >
-            Create your own poll →
-          </a>
+            ✨ Create your own poll →
+          </motion.a>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
