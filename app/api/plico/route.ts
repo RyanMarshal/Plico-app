@@ -1,53 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { CreatePlicoRequest } from '@/lib/types'
+import { createPollSchema } from '@/lib/validations'
+import { z } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CreatePlicoRequest = await request.json()
+    const body = await request.json()
     
-    if (!body.question || !body.options || body.options.length < 2) {
-      return NextResponse.json(
-        { error: 'Question and at least 2 options are required' },
-        { status: 400 }
-      )
-    }
-
-    if (body.question.length > 280) {
-      return NextResponse.json(
-        { error: 'Question must be 280 characters or less' },
-        { status: 400 }
-      )
-    }
-
-    if (body.options.length > 4) {
-      return NextResponse.json(
-        { error: 'Maximum 4 options allowed' },
-        { status: 400 }
-      )
-    }
-
-    const invalidOption = body.options.find(opt => opt.length > 80)
+    // Validate input with Zod
+    const validatedData = createPollSchema.parse(body)
+    
+    // Additional validation for empty strings after trimming
+    const invalidOption = validatedData.options.find(opt => opt.trim().length === 0)
     if (invalidOption) {
       return NextResponse.json(
-        { error: 'Each option must be 80 characters or less' },
+        { error: 'Options cannot be empty' },
         { status: 400 }
       )
     }
 
     // Calculate closesAt if duration is provided
     let closesAt = undefined
-    if (body.duration && body.duration > 0) {
+    if (validatedData.duration && validatedData.duration > 0) {
       closesAt = new Date()
-      closesAt.setMinutes(closesAt.getMinutes() + body.duration)
+      closesAt.setMinutes(closesAt.getMinutes() + validatedData.duration)
     }
 
     const plico = await db.plico.create({
       data: {
-        question: body.question,
+        question: validatedData.question,
         closesAt,
         options: {
-          create: body.options.map(text => ({ text }))
+          create: validatedData.options.map((text, index) => ({ 
+            text,
+            // Ensure consistent ordering by adding a small time offset
+            createdAt: new Date(Date.now() + index)
+          }))
         }
       },
       include: {
@@ -57,6 +46,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(plico, { status: 201 })
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: error.errors },
+        { status: 400 }
+      )
+    }
     console.error('Error creating plico:', error)
     return NextResponse.json(
       { error: 'Failed to create plico' },

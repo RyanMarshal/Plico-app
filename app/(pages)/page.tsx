@@ -2,8 +2,12 @@
 
 import PollCreator from '@/components/plico/PollCreator'
 import { motion } from 'framer-motion'
+import { useDynamicFavicon } from '@/hooks/useDynamicFavicon'
 
 export default function HomePage() {
+  // Set the sparkles favicon for the creation page
+  useDynamicFavicon('✨')
+  
   return (
     <div className="container mx-auto py-12 px-4">
       <motion.div 

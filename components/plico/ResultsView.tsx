@@ -4,10 +4,29 @@ import { useEffect, useState, useCallback, useMemo, memo } from 'react'
 import { PlicoWithResults } from '@/lib/types'
 import CountdownTimer from './CountdownTimer'
 import { motion, AnimatePresence } from 'framer-motion'
-import Drumroll from '@/components/ui/drumroll'
-import WinnerSpotlight from '@/components/ui/winner-spotlight'
-import PhysicsConfetti from '@/components/ui/physics-confetti'
-import TieBreakerWheel from '@/components/ui/tie-breaker-wheel'
+import dynamic from 'next/dynamic'
+import { useSoundEffects } from '@/hooks/useSoundEffects'
+
+// Lazy load heavy animation components
+const Drumroll = dynamic(() => import('@/components/ui/drumroll'), {
+  ssr: false,
+  loading: () => null
+})
+
+const WinnerSpotlight = dynamic(() => import('@/components/ui/winner-spotlight'), {
+  ssr: false,
+  loading: () => null
+})
+
+const PhysicsConfetti = dynamic(() => import('@/components/ui/physics-confetti'), {
+  ssr: false,
+  loading: () => null
+})
+
+const TieBreakerWheel = dynamic(() => import('@/components/ui/tie-breaker-wheel'), {
+  ssr: false,
+  loading: () => null
+})
 
 interface ResultsViewProps {
   poll: PlicoWithResults
@@ -136,6 +155,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
   const [showConfetti, setShowConfetti] = useState(false)
   const [showDrumroll, setShowDrumroll] = useState(false)
   const [revealResults, setRevealResults] = useState(false)
+  const { playChime, playRattle } = useSoundEffects()
 
   const totalVotes = poll.totalVotes || 1
 
@@ -193,6 +213,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
       if (poll.isTie && poll.winner) {
         setTimeout(() => {
           setShowTieBreaker(true)
+          playRattle() // Play rattle sound for tie-breaker
           setTimeout(() => {
             setShowTieBreaker(false)
           }, 3000)
@@ -200,6 +221,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
       } else if (poll.winner && !poll.isTie) {
         setTimeout(() => {
           setShowConfetti(true)
+          playChime() // Play chime sound for celebration
           setTimeout(() => {
             setShowConfetti(false)
           }, 5000)
@@ -212,7 +234,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         cancelAnimationFrame(animationFrame)
       }
     }
-  }, [poll, revealResults])
+  }, [poll, revealResults, playChime, playRattle])
 
 
   return (

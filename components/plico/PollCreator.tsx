@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { setCreatorCookie } from '@/lib/cookies'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn, getSmartDefaultDays, getSmartDefaultTimes } from '@/lib/utils'
+import { useSoundEffects } from '@/hooks/useSoundEffects'
 
 const MAX_QUESTION_LENGTH = 280
 const MAX_OPTION_LENGTH = 80
@@ -43,7 +44,7 @@ const QUICK_START_QUESTIONS = [
     text: "What day works best for everyone?", 
     emoji: "🗓️",
     description: "Schedule coordination made easy",
-    suggestedOptions: ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    suggestedOptions: getSmartDefaultDays()
   },
   { 
     text: "What should we do tonight?", 
@@ -55,7 +56,7 @@ const QUICK_START_QUESTIONS = [
     text: "What time should we meet?", 
     emoji: "⏰",
     description: "Nail down the timing",
-    suggestedOptions: ["6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM"]
+    suggestedOptions: getSmartDefaultTimes()
   },
   { 
     text: "Which option do you prefer?", 
@@ -128,6 +129,7 @@ const PollCreator = memo(function PollCreator() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const { playWhoosh } = useSoundEffects()
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -190,6 +192,8 @@ const PollCreator = memo(function PollCreator() {
       // Set creator cookie
       setCreatorCookie(plico.id, plico.creatorId)
       
+      // Play sound and navigate
+      playWhoosh()
       router.push(`/poll/${plico.id}/share`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -221,7 +225,14 @@ const PollCreator = memo(function PollCreator() {
               onClick={() => {
                 setQuestion(q.text)
                 // Always update options when selecting a quick-start question
-                setOptions(q.suggestedOptions.slice(0, 4))
+                // Recalculate smart defaults for time-sensitive questions
+                let options = q.suggestedOptions;
+                if (q.text === "What day works best for everyone?") {
+                  options = getSmartDefaultDays();
+                } else if (q.text === "What time should we meet?") {
+                  options = getSmartDefaultTimes();
+                }
+                setOptions(options.slice(0, 4))
               }}
               className={`group relative p-4 border-2 rounded-xl transition-all text-left ${
                 question === q.text 

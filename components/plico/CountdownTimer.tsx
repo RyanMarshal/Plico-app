@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState, memo, useCallback } from 'react'
+import { useEffect, useState, memo, useCallback, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { useSoundEffects } from '@/hooks/useSoundEffects'
 
 interface CountdownTimerProps {
   closesAt: Date
@@ -10,6 +12,8 @@ interface CountdownTimerProps {
 const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0)
   const [isUrgent, setIsUrgent] = useState(false)
+  const { playTick, playHeartbeat } = useSoundEffects()
+  const lastTickSecond = useRef<number>(-1)
 
   const calculateTimeLeft = useCallback(() => {
     const now = new Date().getTime()
@@ -22,9 +26,21 @@ const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: Coun
       return 0
     }
 
-    setIsUrgent(difference <= 30000) // 30 seconds
+    const seconds = Math.floor(difference / 1000)
+    
+    // Play tick sound for final 5 seconds
+    if (seconds <= 5 && seconds > 0 && seconds !== lastTickSecond.current) {
+      if (seconds <= 3) {
+        playHeartbeat() // More urgent sound for final 3 seconds
+      } else {
+        playTick()
+      }
+      lastTickSecond.current = seconds
+    }
+    
+    setIsUrgent(difference <= 20000) // 20 seconds
     return difference
-  }, [closesAt, onExpire])
+  }, [closesAt, onExpire, playTick, playHeartbeat])
 
   useEffect(() => {
 
@@ -67,20 +83,36 @@ const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: Coun
   }
 
   return (
-    <div className={`text-center py-4 px-6 rounded-lg transition-all ${
-      isUrgent 
-        ? 'bg-red-100 animate-pulse' 
-        : 'bg-blue-100'
-    }`}>
+    <motion.div 
+      className={`text-center py-4 px-6 rounded-lg transition-colors ${
+        isUrgent 
+          ? 'bg-red-100' 
+          : 'bg-blue-100'
+      }`}
+      animate={isUrgent ? {
+        scale: [1, 1.02, 1],
+      } : {}}
+      transition={{
+        duration: 1,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+    >
       <p className="text-sm font-medium text-gray-600 mb-1">
         Time remaining
       </p>
-      <p className={`text-3xl font-bold ${
-        isUrgent ? 'text-red-600' : 'text-blue-600'
-      }`}>
+      <motion.p 
+        className={`text-3xl font-bold ${
+          isUrgent ? 'text-red-600' : 'text-blue-600'
+        }`}
+        key={formatTime()}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
         {formatTime()}
-      </p>
-    </div>
+      </motion.p>
+    </motion.div>
   )
 })
 

@@ -11,7 +11,10 @@ export async function GET(
       where: { id: params.id },
       include: {
         options: {
-          orderBy: { createdAt: 'asc' }
+          orderBy: [
+            { createdAt: 'asc' },
+            { id: 'asc' }  // Secondary sort by ID to ensure consistent ordering
+          ]
         }
       }
     })
@@ -48,7 +51,13 @@ export async function GET(
       isClosed
     }
 
-    return NextResponse.json(result)
+    // Add cache headers for better performance
+    const headers = new Headers()
+    // Cache for 5 seconds for active polls, 1 minute for closed polls
+    const cacheTime = isClosed ? 60 : 5
+    headers.set('Cache-Control', `public, s-maxage=${cacheTime}, stale-while-revalidate`)
+    
+    return NextResponse.json(result, { headers })
   } catch (error) {
     console.error('Error fetching plico:', error)
     return NextResponse.json(

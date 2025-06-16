@@ -5,8 +5,15 @@ import { useParams, useRouter } from 'next/navigation'
 import { PlicoWithResults } from '@/lib/types'
 import ShareButtons from '@/components/plico/ShareButtons'
 import { motion, AnimatePresence } from 'framer-motion'
-import PhysicsConfetti from '@/components/ui/physics-confetti'
 import { MorphLoader } from '@/components/ui/plico-loader'
+import dynamic from 'next/dynamic'
+import { useDynamicFavicon } from '@/hooks/useDynamicFavicon'
+
+// Lazy load confetti for better performance
+const PhysicsConfetti = dynamic(() => import('@/components/ui/physics-confetti'), {
+  ssr: false,
+  loading: () => null
+})
 
 export default function SharePage() {
   const params = useParams()
@@ -15,6 +22,9 @@ export default function SharePage() {
   const [poll, setPoll] = useState<PlicoWithResults | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  
+  // Use party popper emoji for the share page
+  useDynamicFavicon('🎉')
   
   const pollUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/poll/${pollId}`
@@ -252,7 +262,7 @@ export default function SharePage() {
               className="block text-purple-600 hover:text-purple-700 font-semibold text-lg"
               whileHover={{ scale: 1.05 }}
             >
-              ✨ Create Another Poll
+              ✨ Create Another Plico
             </motion.a>
           </motion.div>
 

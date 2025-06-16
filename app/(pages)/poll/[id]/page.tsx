@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, memo } from 'react'
 import { useParams } from 'next/navigation'
 import { PlicoWithResults } from '@/lib/types'
 import { hasVoted, getCreatorId } from '@/lib/cookies'
@@ -8,8 +8,9 @@ import PollView from '@/components/plico/PollView'
 import ResultsView from '@/components/plico/ResultsView'
 import { motion } from 'framer-motion'
 import { MorphLoader } from '@/components/ui/plico-loader'
+import { useDynamicFavicon } from '@/hooks/useDynamicFavicon'
 
-export default function PollPage() {
+function PollPage() {
   const params = useParams()
   const pollId = params.id as string
   const [poll, setPoll] = useState<PlicoWithResults | null>(null)
@@ -17,6 +18,17 @@ export default function PollPage() {
   const [error, setError] = useState('')
   const [showResults, setShowResults] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
+  
+  // Determine the correct emoji based on the state
+  let currentEmoji = '🤔' // Default to thinking face
+  if (showResults || poll?.isClosed) {
+    currentEmoji = '🎉' // Party popper for results
+  } else if (poll?.closesAt) {
+    currentEmoji = '⏰' // Alarm clock for timed polls
+  }
+  
+  // Update the favicon dynamically
+  useDynamicFavicon(currentEmoji)
 
   const fetchPoll = useCallback(async () => {
     try {
@@ -190,10 +202,12 @@ export default function PollPage() {
             className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold text-lg"
             whileHover={{ scale: 1.05 }}
           >
-            ✨ Create your own poll →
+            ✨ Create your own plico →
           </motion.a>
         </div>
       </motion.div>
     </div>
   )
 }
+
+export default memo(PollPage)

@@ -5,8 +5,15 @@ import { PlicoWithResults } from '@/lib/types'
 import { setVotedCookie } from '@/lib/cookies'
 import CountdownTimer from './CountdownTimer'
 import { motion, AnimatePresence } from 'framer-motion'
-import MicroConfetti from '@/components/ui/micro-confetti'
 import { MorphLoader } from '@/components/ui/plico-loader'
+import dynamic from 'next/dynamic'
+import { useSoundEffects } from '@/hooks/useSoundEffects'
+
+// Lazy load confetti for better performance
+const MicroConfetti = dynamic(() => import('@/components/ui/micro-confetti'), {
+  ssr: false,
+  loading: () => null
+})
 
 interface PollViewProps {
   poll: PlicoWithResults
@@ -18,6 +25,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
   const [isVoting, setIsVoting] = useState(false)
   const [error, setError] = useState('')
   const [confettiPosition, setConfettiPosition] = useState<{ x: number; y: number } | null>(null)
+  const { playPop } = useSoundEffects()
 
   const handleVote = useCallback(async (optionId: string, event: React.MouseEvent) => {
     // Get button position for confetti
@@ -29,8 +37,9 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
     setIsVoting(true)
     setError('')
     
-    // Show micro confetti
+    // Show micro confetti and play sound
     setConfettiPosition({ x, y })
+    playPop()
 
     try {
       const response = await fetch(`/api/plico/${poll.id}/vote`, {
@@ -56,7 +65,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
       setSelectedOption(null)
       setConfettiPosition(null)
     }
-  }, [poll.id, onVoteComplete])
+  }, [poll.id, onVoteComplete, playPop])
 
   return (
     <motion.div 
