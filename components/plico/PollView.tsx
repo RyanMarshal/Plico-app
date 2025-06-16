@@ -95,7 +95,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
         >
           <CountdownTimer 
             closesAt={new Date(poll.closesAt)} 
-            onExpire={onVoteComplete}
+            onExpire={() => window.location.reload()}
           />
         </motion.div>
       )}
