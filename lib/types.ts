@@ -2,6 +2,9 @@ export interface Plico {
   id: string
   question: string
   options: Option[]
+  creatorId: string | null
+  finalized: boolean
+  finalizedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }

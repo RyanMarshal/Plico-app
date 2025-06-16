@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { setCreatorCookie } from '@/lib/cookies'
 
 const MAX_QUESTION_LENGTH = 280
 const MAX_OPTION_LENGTH = 80
@@ -61,7 +62,11 @@ export default function PollCreator() {
       }
 
       const plico = await response.json()
-      router.push(`/poll/${plico.id}`)
+      
+      // Set creator cookie
+      setCreatorCookie(plico.id, plico.creatorId)
+      
+      router.push(`/poll/${plico.id}/share`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setIsSubmitting(false)

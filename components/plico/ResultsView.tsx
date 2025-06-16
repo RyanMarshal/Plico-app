@@ -5,9 +5,11 @@ import { PlicoWithResults } from '@/lib/types'
 
 interface ResultsViewProps {
   poll: PlicoWithResults
+  isCreator: boolean
+  onFinalize: () => void
 }
 
-export default function ResultsView({ poll }: ResultsViewProps) {
+export default function ResultsView({ poll, isCreator, onFinalize }: ResultsViewProps) {
   const [animatedVotes, setAnimatedVotes] = useState<Record<string, number>>({})
   const [showTieBreaker, setShowTieBreaker] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -47,20 +49,23 @@ export default function ResultsView({ poll }: ResultsViewProps) {
       intervals.push(interval)
     })
 
-    if (poll.isTie && poll.winner) {
-      setTimeout(() => {
-        setShowTieBreaker(true)
+    // Only show winner animations if poll is finalized
+    if (poll.finalized) {
+      if (poll.isTie && poll.winner) {
         setTimeout(() => {
-          setShowTieBreaker(false)
-        }, 3000)
-      }, animationDuration + 500)
-    } else if (poll.winner && !poll.isTie) {
-      setTimeout(() => {
-        setShowConfetti(true)
+          setShowTieBreaker(true)
+          setTimeout(() => {
+            setShowTieBreaker(false)
+          }, 3000)
+        }, animationDuration + 500)
+      } else if (poll.winner && !poll.isTie) {
         setTimeout(() => {
-          setShowConfetti(false)
-        }, 5000)
-      }, animationDuration + 500)
+          setShowConfetti(true)
+          setTimeout(() => {
+            setShowConfetti(false)
+          }, 5000)
+        }, animationDuration + 500)
+      }
     }
 
     return () => {
@@ -79,7 +84,7 @@ export default function ResultsView({ poll }: ResultsViewProps) {
       <div className="space-y-4 mb-6">
         {poll.options.map((option) => {
           const percentage = getPercentage(animatedVotes[option.id] || 0)
-          const isWinner = poll.winner?.id === option.id
+          const isWinner = poll.finalized && poll.winner?.id === option.id
           
           return (
             <div
@@ -108,7 +113,7 @@ export default function ResultsView({ poll }: ResultsViewProps) {
                 {percentage.toFixed(1)}%
               </div>
               
-              {isWinner && (
+              {isWinner && poll.finalized && (
                 <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
                   Winner!
                 </div>
@@ -121,6 +126,30 @@ export default function ResultsView({ poll }: ResultsViewProps) {
       <div className="text-center text-gray-600">
         Total votes: {poll.totalVotes}
       </div>
+
+      {!poll.finalized && isCreator && poll.totalVotes > 0 && (
+        <div className="mt-8 text-center">
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              When everyone has voted, click below to finalize the results and declare a winner.
+            </p>
+          </div>
+          <button
+            onClick={onFinalize}
+            className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Finalize Results
+          </button>
+        </div>
+      )}
+
+      {poll.finalized && (
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Results finalized on {new Date(poll.finalizedAt!).toLocaleDateString()}
+          </p>
+        </div>
+      )}
 
       {showTieBreaker && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
