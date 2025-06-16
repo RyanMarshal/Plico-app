@@ -11,7 +11,7 @@ const SoundToggle = memo(function SoundToggle() {
   return (
     <motion.button
       onClick={toggleMute}
-      className="relative p-2 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+      className="relative p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
@@ -22,9 +22,9 @@ const SoundToggle = memo(function SoundToggle() {
         transition={{ duration: 0.3 }}
       >
         {isMuted ? (
-          <VolumeX className="w-5 h-5 text-gray-600" />
+          <VolumeX className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         ) : (
-          <Volume2 className="w-5 h-5 text-purple-600" />
+          <Volume2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
         )}
       </motion.div>
       

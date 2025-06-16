@@ -22,16 +22,24 @@ export default function HomePage() {
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, type: "spring" }}
         >
-          Stop arguing. Just send a Plico.
+          Stop arguing. Send a Plico.
         </motion.h1>
-        <motion.p 
-          className="text-xl md:text-2xl text-gray-600"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          The fastest, most fun way to make a group decision. Period.
-        </motion.p>
+        <div className="inline-block">
+          <motion.p 
+            className="text-xl md:text-2xl text-gray-600 dark:text-gray-300"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            The fastest, most fun way to make a group decision. Period.
+          </motion.p>
+          <motion.div
+            className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 mt-4 w-full"
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          />
+        </div>
       </motion.div>
       
       <PollCreator />

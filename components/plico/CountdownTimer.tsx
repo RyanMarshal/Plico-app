@@ -62,8 +62,8 @@ const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: Coun
 
   if (timeLeft === 0) {
     return (
-      <div className="text-center py-4 px-6 bg-red-100 rounded-lg">
-        <p className="text-red-800 font-semibold">Voting has ended</p>
+      <div className="text-center py-4 px-6 bg-red-100 dark:bg-red-900/30 rounded-lg">
+        <p className="text-red-800 dark:text-red-300 font-semibold">Voting has ended</p>
       </div>
     )
   }
@@ -86,8 +86,8 @@ const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: Coun
     <motion.div 
       className={`text-center py-4 px-6 rounded-lg transition-colors ${
         isUrgent 
-          ? 'bg-red-100' 
-          : 'bg-blue-100'
+          ? 'bg-red-100 dark:bg-red-900/30' 
+          : 'bg-blue-100 dark:bg-blue-900/30'
       }`}
       animate={isUrgent ? {
         scale: [1, 1.02, 1],
@@ -98,12 +98,12 @@ const CountdownTimer = memo(function CountdownTimer({ closesAt, onExpire }: Coun
         ease: "easeInOut"
       }}
     >
-      <p className="text-sm font-medium text-gray-600 mb-1">
+      <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
         Time remaining
       </p>
       <motion.p 
         className={`text-3xl font-bold ${
-          isUrgent ? 'text-red-600' : 'text-blue-600'
+          isUrgent ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
         }`}
         key={formatTime()}
         initial={{ opacity: 0, y: -10 }}

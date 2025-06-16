@@ -17,7 +17,7 @@ const MicroConfetti = dynamic(() => import('@/components/ui/micro-confetti'), {
 
 interface PollViewProps {
   poll: PlicoWithResults
-  onVoteComplete: () => void
+  onVoteComplete: (votedOptionId: string, rollback?: boolean) => void
 }
 
 const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps) {
@@ -40,6 +40,10 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
     // Show micro confetti and play sound
     setConfettiPosition({ x, y })
     playPop()
+    
+    // Optimistically call onVoteComplete immediately
+    onVoteComplete(optionId)
+    setVotedCookie(poll.id)
 
     try {
       const response = await fetch(`/api/plico/${poll.id}/vote`, {
@@ -52,18 +56,17 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
         const data = await response.json()
         throw new Error(data.error || 'Failed to submit vote')
       }
-
-      setVotedCookie(poll.id)
       
-      // Small delay to let confetti play
-      setTimeout(() => {
-        onVoteComplete()
-      }, 500)
+      // Vote was successful, UI already updated optimistically
     } catch (err) {
+      // Vote failed - rollback the optimistic update
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setIsVoting(false)
       setSelectedOption(null)
       setConfettiPosition(null)
+      
+      // Rollback the vote
+      onVoteComplete(optionId, true)
     }
   }, [poll.id, onVoteComplete, playPop])
 
@@ -75,7 +78,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
       transition={{ duration: 0.5 }}
     >
       <motion.h1 
-        className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent"
+        className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
@@ -113,8 +116,8 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
             className={`
               w-full p-6 text-left rounded-2xl border-2 transition-all relative overflow-hidden
               ${selectedOption === option.id 
-                ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-pink-50' 
-                : 'border-gray-200 hover:border-purple-300 bg-white/80 backdrop-blur-sm'
+                ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20' 
+                : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm'
               }
               ${isVoting || poll.isClosed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
@@ -128,7 +131,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
             } : {}}
             whileTap={!isVoting && !poll.isClosed ? { scale: 0.98 } : {}}
           >
-            <span className="text-lg font-medium relative z-10">{option.text}</span>
+            <span className="text-lg font-medium relative z-10 dark:text-gray-100">{option.text}</span>
             
             {selectedOption === option.id && (
               <motion.div
@@ -145,7 +148,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
       <AnimatePresence>
         {error && (
           <motion.div 
-            className="mt-4 bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-700 px-4 py-3 rounded-xl"
+            className="mt-4 bg-red-50/80 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -168,7 +171,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
             transition={{ duration: 0.3 }}
           >
             <MorphLoader size="sm" />
-            <p className="mt-3 text-gray-600 font-medium">Submitting your vote...</p>
+            <p className="mt-3 text-gray-600 dark:text-gray-400 font-medium">Submitting your vote...</p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -7,19 +7,18 @@ const AnimatedGradient = memo(function AnimatedGradient() {
     <>
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div 
-          className="animated-gradient-rotate absolute inset-0"
+          className="animated-gradient-rotate absolute inset-0 opacity-70 dark:opacity-20"
           style={{
             background: `radial-gradient(circle at 50% 50%, rgb(168, 85, 247) 0%, transparent 50%), 
                          radial-gradient(circle at 50% 50%, rgb(59, 130, 246) 0%, transparent 50%), 
                          radial-gradient(circle at 50% 50%, rgb(236, 72, 153) 0%, transparent 50%)`,
             filter: 'blur(40px)',
-            opacity: 0.7,
           }}
         />
         
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-pink-50/50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20" />
         
-        <div className="animated-gradient-mesh absolute -inset-[10px] opacity-30 overflow-hidden">
+        <div className="animated-gradient-mesh absolute -inset-[10px] opacity-30 dark:opacity-10 overflow-hidden">
           <div 
             className="animated-gradient-translate absolute inset-0"
             style={{
@@ -32,7 +31,7 @@ const AnimatedGradient = memo(function AnimatedGradient() {
         </div>
       </div>
       
-      <div className="fixed inset-0 -z-10 bg-white/80 backdrop-blur-sm" />
+      <div className="fixed inset-0 -z-10 bg-white/80 dark:bg-black/90 backdrop-blur-sm" />
       
       <style jsx>{`
         @keyframes gradient-rotate {

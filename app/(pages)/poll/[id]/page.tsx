@@ -64,8 +64,32 @@ function PollPage() {
     fetchPoll()
   }, [pollId, fetchPoll])
 
-  const handleVoteComplete = () => {
-    fetchPoll()
+  const handleVoteComplete = (votedOptionId: string, rollback?: boolean) => {
+    if (rollback) {
+      // Rollback the optimistic update
+      fetchPoll()
+      setShowResults(false)
+      return
+    }
+    
+    // Optimistic UI update - immediately show results with the vote
+    if (poll) {
+      setPoll(prevPoll => {
+        if (!prevPoll) return prevPoll
+        
+        const updatedOptions = prevPoll.options.map(option => ({
+          ...option,
+          voteCount: option.id === votedOptionId ? option.voteCount + 1 : option.voteCount
+        }))
+        
+        return {
+          ...prevPoll,
+          options: updatedOptions,
+          totalVotes: prevPoll.totalVotes + 1
+        }
+      })
+    }
+    
     setShowResults(true)
   }
 

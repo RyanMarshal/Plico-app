@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, memo } from 'react'
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from 'react'
 import { PlicoWithResults } from '@/lib/types'
 import CountdownTimer from './CountdownTimer'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { useSoundEffects } from '@/hooks/useSoundEffects'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Lazy load heavy animation components
 const Drumroll = dynamic(() => import('@/components/ui/drumroll'), {
@@ -52,7 +53,7 @@ const PollOption = memo(function PollOption({
   return (
     <motion.div
       className={`relative p-6 rounded-2xl border-2 transition-all overflow-hidden shadow-lg ${
-        isWinner ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50' : 'border-gray-200 bg-white'
+        isWinner ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
       }`}
       initial={{ opacity: 0, x: -50 }}
       animate={{ 
@@ -72,9 +73,9 @@ const PollOption = memo(function PollOption({
     >
       <WinnerSpotlight winnerText={option.text} isVisible={isWinner} />
       <div className="flex justify-between items-center mb-3">
-        <span className="font-semibold text-lg">{option.text}</span>
+        <span className="font-semibold text-lg dark:text-gray-100">{option.text}</span>
         <motion.span 
-          className="text-base font-bold text-purple-600"
+          className="text-base font-bold text-purple-600 dark:text-purple-400"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.5 + index * 0.1 }}
@@ -83,7 +84,7 @@ const PollOption = memo(function PollOption({
         </motion.span>
       </div>
       
-      <div className="w-full bg-gray-100 rounded-full h-8 overflow-hidden shadow-inner">
+      <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-8 overflow-hidden shadow-inner">
         <motion.div
           className={`h-full relative overflow-hidden ${
             isWinner 
@@ -113,14 +114,14 @@ const PollOption = memo(function PollOption({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 + index * 0.1 }}
       >
-        <span className={isWinner ? 'text-green-600' : 'text-gray-600'}>
+        <span className={isWinner ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}>
           {percentage.toFixed(1)}%
         </span>
       </motion.div>
       
       {isWinner && (
         <motion.div 
-          className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full shadow-lg"
+          className="absolute -top-2 -right-2 bg-green-500 dark:bg-green-600 text-white text-xs px-2 py-1 rounded-full shadow-lg"
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ 
@@ -156,9 +157,16 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
   const [showConfetti, setShowConfetti] = useState(false)
   const [showDrumroll, setShowDrumroll] = useState(false)
   const [revealResults, setRevealResults] = useState(false)
+  const [currentPoll, setCurrentPoll] = useState(poll)
   const { playChime, playRattle } = useSoundEffects()
+  const channelRef = useRef<any>(null)
 
-  const totalVotes = poll.totalVotes || 1
+  const totalVotes = currentPoll.totalVotes || 1
+
+  // Update currentPoll when poll prop changes
+  useEffect(() => {
+    setCurrentPoll(poll)
+  }, [poll])
 
   // Memoize percentage calculation
   const getPercentage = useCallback((voteCount: number) => {
@@ -173,7 +181,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
 
   useEffect(() => {
     // Check if this is the first time seeing closed results
-    if (poll.isClosed && !revealResults && poll.totalVotes > 0) {
+    if (currentPoll.isClosed && !revealResults && currentPoll.totalVotes > 0) {
       setShowDrumroll(true)
       return
     }
@@ -183,7 +191,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
     const stepDuration = animationDuration / steps
 
     const initialVotes: Record<string, number> = {}
-    poll.options.forEach(option => {
+    currentPoll.options.forEach(option => {
       initialVotes[option.id] = 0
     })
     setAnimatedVotes(initialVotes)
@@ -197,7 +205,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
       const progress = Math.min((timestamp - startTime) / animationDuration, 1)
 
       const newVotes: Record<string, number> = {}
-      poll.options.forEach(option => {
+      currentPoll.options.forEach(option => {
         newVotes[option.id] = option.voteCount * progress
       })
       setAnimatedVotes(newVotes)
@@ -210,8 +218,8 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
     animationFrame = requestAnimationFrame(animate)
 
     // Show winner animations if poll is closed (either finalized or timer expired)
-    if (poll.isClosed && revealResults) {
-      if (poll.isTie && poll.winner) {
+    if (currentPoll.isClosed && revealResults) {
+      if (currentPoll.isTie && currentPoll.winner) {
         setTimeout(() => {
           setShowTieBreaker(true)
           playRattle() // Play rattle sound for tie-breaker
@@ -219,7 +227,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
             setShowTieBreaker(false)
           }, 3000)
         }, animationDuration + 500)
-      } else if (poll.winner && !poll.isTie) {
+      } else if (currentPoll.winner && !currentPoll.isTie) {
         setTimeout(() => {
           setShowConfetti(true)
           playChime() // Play chime sound for celebration
@@ -235,8 +243,63 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         cancelAnimationFrame(animationFrame)
       }
     }
-  }, [poll, revealResults, playChime, playRattle])
+  }, [currentPoll, revealResults, playChime, playRattle])
 
+  // Real-time subscription for live updates
+  useEffect(() => {
+    const supabase = getSupabaseClient()
+    
+    if (!supabase || currentPoll.isClosed) {
+      return
+    }
+
+    // Subscribe to changes on the Option table for this poll
+    const channel = supabase
+      .channel(`poll-${poll.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'Option',
+          filter: `plicoId=eq.${poll.id}`
+        },
+        (payload: any) => {
+          // Update the local state with new vote data
+          setCurrentPoll(prev => {
+            const updatedOptions = prev.options.map(option => {
+              if (option.id === payload.new.id) {
+                return {
+                  ...option,
+                  voteCount: payload.new.voteCount || 0
+                }
+              }
+              return option
+            })
+            
+            // Calculate new total votes
+            const newTotalVotes = updatedOptions.reduce((sum, opt) => sum + opt.voteCount, 0)
+            
+            return {
+              ...prev,
+              options: updatedOptions,
+              totalVotes: newTotalVotes
+            }
+          })
+        }
+      )
+      .subscribe()
+
+    channelRef.current = channel
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, [poll.id, currentPoll.isClosed])
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
@@ -246,34 +309,34 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {poll.question}
+        {currentPoll.question}
       </motion.h1>
       
       <AnimatePresence mode="wait">
-        {showDrumroll && poll.isClosed ? (
+        {showDrumroll && currentPoll.isClosed ? (
           <Drumroll onComplete={handleDrumrollComplete} duration={2000} />
         ) : null}
       </AnimatePresence>
       
-      {poll.closesAt && !poll.isClosed && (
+      {currentPoll.closesAt && !currentPoll.isClosed && (
         <div className="mb-6">
           <CountdownTimer 
-            closesAt={new Date(poll.closesAt)} 
+            closesAt={new Date(currentPoll.closesAt)} 
             onExpire={onTimerExpire || onFinalize}
           />
         </div>
       )}
       
-      {(!showDrumroll || !poll.isClosed) && (
+      {(!showDrumroll || !currentPoll.isClosed) && (
         <motion.div 
           className="space-y-4 mb-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          {poll.options.map((option, index) => {
+          {currentPoll.options.map((option, index) => {
             const percentage = getPercentage(animatedVotes[option.id] || 0)
-            const isWinner = poll.isClosed && poll.winner?.id === option.id && revealResults
+            const isWinner = currentPoll.isClosed && currentPoll.winner?.id === option.id && revealResults
             
             return (
               <PollOption
@@ -289,14 +352,14 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         </motion.div>
       )}
 
-      {(!showDrumroll || !poll.isClosed) && (
+      {(!showDrumroll || !currentPoll.isClosed) && (
         <motion.div 
           className="text-center mt-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-6 py-3 rounded-full font-semibold shadow-md">
+          <div className="inline-flex items-center gap-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-6 py-3 rounded-full font-semibold shadow-md">
             <motion.span
               aria-hidden="true"
               animate={{ scale: [1, 1.2, 1] }}
@@ -304,12 +367,12 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
             >
               🗳️
             </motion.span>
-            Total votes: {poll.totalVotes}
+            Total votes: {currentPoll.totalVotes}
           </div>
         </motion.div>
       )}
 
-      {!poll.finalized && !poll.closesAt && isCreator && poll.totalVotes > 0 && (
+      {!currentPoll.finalized && !currentPoll.closesAt && isCreator && currentPoll.totalVotes > 0 && (
         <motion.div 
           className="mt-8 text-center"
           initial={{ opacity: 0, y: 20 }}
@@ -317,11 +380,11 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
           transition={{ delay: 0.6 }}
         >
           <motion.div 
-            className="mb-6 p-6 bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-2xl shadow-lg"
+            className="mb-6 p-6 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-2xl shadow-lg"
             animate={{ scale: [1, 1.02, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <p className="text-base text-yellow-800 font-medium">
+            <p className="text-base text-yellow-800 dark:text-yellow-200 font-medium">
               🎯 When everyone has voted, click below to finalize the results and declare a winner.
             </p>
           </motion.div>
@@ -336,31 +399,31 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         </motion.div>
       )}
 
-      {poll.isClosed && (
+      {currentPoll.isClosed && (
         <motion.div 
           className="mt-8 text-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
         >
-          <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-medium">
+          <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-full font-medium">
             <span className="text-lg">🏏</span>
-            {poll.finalized && poll.finalizedAt
-              ? `Results finalized on ${new Date(poll.finalizedAt).toLocaleDateString()}`
-              : poll.closesAt
-              ? `Voting ended on ${new Date(poll.closesAt).toLocaleDateString()} at ${new Date(poll.closesAt).toLocaleTimeString()}`
+            {currentPoll.finalized && currentPoll.finalizedAt
+              ? `Results finalized on ${new Date(currentPoll.finalizedAt).toLocaleDateString()}`
+              : currentPoll.closesAt
+              ? `Voting ended on ${new Date(currentPoll.closesAt).toLocaleDateString()} at ${new Date(currentPoll.closesAt).toLocaleTimeString()}`
               : 'Voting has ended'}
           </div>
         </motion.div>
       )}
 
       <TieBreakerWheel
-        options={poll.options.map(opt => ({
+        options={currentPoll.options.map(opt => ({
           id: opt.id,
           text: opt.text,
           color: `hsl(${Math.random() * 360}, 70%, 50%)`
         }))}
-        winnerId={poll.winner?.id || ''}
+        winnerId={currentPoll.winner?.id || ''}
         isVisible={showTieBreaker}
         onComplete={() => setShowTieBreaker(false)}
       />

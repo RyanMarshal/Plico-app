@@ -14,10 +14,11 @@ const MAX_OPTIONS = 4
 
 const TIMER_OPTIONS = [
   { label: 'No Timer', value: 0 },
-  { label: '2 minutes', value: 2 },
   { label: '5 minutes', value: 5 },
-  { label: '10 minutes', value: 10 },
-  { label: '1 hour', value: 60 }
+  { label: '15 minutes', value: 15 },
+  { label: '1 hour', value: 60 },
+  { label: '4 hours', value: 240 },
+  { label: '24 hours', value: 1440 }
 ]
 
 const QUESTION_PLACEHOLDERS = [
@@ -94,7 +95,7 @@ const PollOption = memo(function PollOption({
         value={option}
         onChange={(e) => updateOption(index, e.target.value)}
         placeholder={`Option ${index + 1}`}
-        className="w-full px-5 py-4 pr-24 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-400"
+        className="w-full px-5 py-4 pr-24 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100"
         maxLength={MAX_OPTION_LENGTH}
         required={index < 2}
       />
@@ -210,15 +211,44 @@ const PollCreator = memo(function PollCreator() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Quick Start Questions */}
+      {/* Question Input */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
+      >
+        <label htmlFor="question" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+          Your Question
+        </label>
+        <div className="relative group">
+          <textarea
+            id="question"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder={QUESTION_PLACEHOLDERS[placeholderIndex]}
+            className="w-full px-5 py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl resize-none focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100"
+            rows={3}
+            maxLength={MAX_QUESTION_LENGTH}
+            required
+          />
+          <motion.div 
+            className="absolute bottom-3 right-3 text-sm"
+            animate={{ color: question.length > MAX_QUESTION_LENGTH - 20 ? '#ef4444' : '#6b7280' }}
+          >
+            {question.length}/{MAX_QUESTION_LENGTH}
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Quick Start Questions */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
         className="mb-6"
       >
-        <h2 className="text-sm font-medium text-gray-600 mb-3">Quick start with a popular question:</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Quick start with a popular question:</h2>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide dark:scrollbar-visible">
           {QUICK_START_QUESTIONS.map((q, index) => (
             <motion.button
               key={index}
@@ -235,65 +265,25 @@ const PollCreator = memo(function PollCreator() {
                 }
                 setOptions(options.slice(0, 4))
               }}
-              className={`group relative p-4 border-2 rounded-xl transition-all text-left ${
+              className={`group flex items-center gap-2 px-4 py-2 border-2 rounded-full transition-all whitespace-nowrap ${
                 question === q.text 
-                  ? 'bg-purple-50 border-purple-400' 
-                  : 'bg-white border-gray-200 hover:border-purple-400 hover:bg-purple-50'
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-transparent text-white' 
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-gray-700'
               }`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1 + index * 0.05 }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <div className="flex items-start gap-3">
-                <span className="text-2xl group-hover:animate-bounce">{q.emoji}</span>
-                <div className="flex-1">
-                  <p className={`font-semibold transition-colors ${
-                    question === q.text ? 'text-purple-700' : 'text-gray-800 group-hover:text-purple-700'
-                  }`}>
-                    {q.text}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{q.description}</p>
-                </div>
-              </div>
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-                initial={false}
-                animate={{ opacity: 0 }}
-                whileHover={{ opacity: 1 }}
-              />
+              <span className="text-lg">{q.emoji}</span>
+              <span className={`font-medium ${
+                question === q.text ? 'text-white' : 'text-gray-700 dark:text-gray-200'
+              }`}>
+                {q.text}
+              </span>
             </motion.button>
           ))}
-        </div>
-      </motion.div>
-
-      {/* Question Input */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <label htmlFor="question" className="block text-sm font-medium mb-2 text-gray-700">
-          Your Question
-        </label>
-        <div className="relative group">
-          <textarea
-            id="question"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder={QUESTION_PLACEHOLDERS[placeholderIndex]}
-            className="w-full px-5 py-4 bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-400"
-            rows={3}
-            maxLength={MAX_QUESTION_LENGTH}
-            required
-          />
-          <motion.div 
-            className="absolute bottom-3 right-3 text-sm"
-            animate={{ color: question.length > MAX_QUESTION_LENGTH - 20 ? '#ef4444' : '#6b7280' }}
-          >
-            {question.length}/{MAX_QUESTION_LENGTH}
-          </motion.div>
         </div>
       </motion.div>
 
@@ -303,7 +293,7 @@ const PollCreator = memo(function PollCreator() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <label className="block text-sm font-medium text-gray-700">Options</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Options</label>
         <AnimatePresence mode="sync">
           {options.map((option, index) => (
             <PollOption
@@ -321,7 +311,7 @@ const PollCreator = memo(function PollCreator() {
           <motion.button
             type="button"
             onClick={addOption}
-            className="w-full py-4 border-2 border-dashed border-purple-300 rounded-xl text-purple-600 hover:border-purple-400 hover:text-purple-700 hover:bg-purple-50/50 transition-all font-medium"
+            className="w-full py-4 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl text-purple-600 dark:text-purple-400 hover:border-purple-400 dark:hover:border-purple-600 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-all font-medium"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -336,8 +326,8 @@ const PollCreator = memo(function PollCreator() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <label className="block text-sm font-medium text-gray-700">Poll Timer (Optional)</label>
-        <p className="text-sm text-gray-500">Set a countdown timer to create urgency</p>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Poll Timer (Optional)</label>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Set a countdown timer to create urgency</p>
         <div className="grid grid-cols-3 gap-2">
           {TIMER_OPTIONS.map((option) => (
             <motion.button
@@ -348,7 +338,7 @@ const PollCreator = memo(function PollCreator() {
                 "py-3 px-4 rounded-xl font-medium transition-all",
                 duration === option.value
                   ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                  : 'bg-white/80 backdrop-blur-sm border-2 border-gray-200 text-gray-700 hover:border-purple-300 hover:shadow-md'
+                  : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md'
               )}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -362,7 +352,7 @@ const PollCreator = memo(function PollCreator() {
       <AnimatePresence>
         {error && (
           <motion.div 
-            className="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-700 px-4 py-3 rounded-xl"
+            className="bg-red-50/80 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
