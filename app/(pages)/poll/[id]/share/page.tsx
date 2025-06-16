@@ -84,6 +84,14 @@ export default function SharePage() {
           <p className="text-sm text-gray-600 mb-2">Your poll question:</p>
           <p className="text-lg font-medium text-gray-900 mb-4">{poll.question}</p>
           
+          {poll.closesAt && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                ⏱️ This poll will close on {new Date(poll.closesAt).toLocaleDateString()} at {new Date(poll.closesAt).toLocaleTimeString()}
+              </p>
+            </div>
+          )}
+          
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-3">
             <input
               type="text"

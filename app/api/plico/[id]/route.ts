@@ -36,11 +36,16 @@ export async function GET(
       winner = winners[randomIndex]
     }
 
+    // Check if poll is closed (either by timer or finalization)
+    const now = new Date()
+    const isClosed = plico.finalized || (plico.closesAt !== null && plico.closesAt <= now)
+
     const result: PlicoWithResults = {
       ...plico,
       totalVotes,
       winner,
-      isTie
+      isTie,
+      isClosed
     }
 
     return NextResponse.json(result)

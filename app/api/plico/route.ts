@@ -35,9 +35,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Calculate closesAt if duration is provided
+    let closesAt = undefined
+    if (body.duration && body.duration > 0) {
+      closesAt = new Date()
+      closesAt.setMinutes(closesAt.getMinutes() + body.duration)
+    }
+
     const plico = await db.plico.create({
       data: {
         question: body.question,
+        closesAt,
         options: {
           create: body.options.map(text => ({ text }))
         }

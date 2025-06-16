@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { PlicoWithResults } from '@/lib/types'
 import { setVotedCookie } from '@/lib/cookies'
+import CountdownTimer from './CountdownTimer'
 
 interface PollViewProps {
   poll: PlicoWithResults
@@ -44,19 +45,28 @@ export default function PollView({ poll, onVoteComplete }: PollViewProps) {
     <div className="w-full max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold text-center mb-8">{poll.question}</h1>
       
+      {poll.closesAt && (
+        <div className="mb-6">
+          <CountdownTimer 
+            closesAt={new Date(poll.closesAt)} 
+            onExpire={onVoteComplete}
+          />
+        </div>
+      )}
+      
       <div className="space-y-4">
         {poll.options.map((option) => (
           <button
             key={option.id}
             onClick={() => handleVote(option.id)}
-            disabled={isVoting}
+            disabled={isVoting || poll.isClosed}
             className={`
               w-full p-6 text-left rounded-lg border-2 transition-all
               ${selectedOption === option.id 
                 ? 'border-blue-500 bg-blue-50' 
                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }
-              ${isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              ${isVoting || poll.isClosed ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
             <span className="text-lg">{option.text}</span>

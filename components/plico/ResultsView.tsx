@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { PlicoWithResults } from '@/lib/types'
+import CountdownTimer from './CountdownTimer'
 
 interface ResultsViewProps {
   poll: PlicoWithResults
   isCreator: boolean
   onFinalize: () => void
+  onTimerExpire?: () => void
 }
 
-export default function ResultsView({ poll, isCreator, onFinalize }: ResultsViewProps) {
+export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire }: ResultsViewProps) {
   const [animatedVotes, setAnimatedVotes] = useState<Record<string, number>>({})
   const [showTieBreaker, setShowTieBreaker] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -49,8 +51,8 @@ export default function ResultsView({ poll, isCreator, onFinalize }: ResultsView
       intervals.push(interval)
     })
 
-    // Only show winner animations if poll is finalized
-    if (poll.finalized) {
+    // Show winner animations if poll is closed (either finalized or timer expired)
+    if (poll.isClosed) {
       if (poll.isTie && poll.winner) {
         setTimeout(() => {
           setShowTieBreaker(true)
@@ -81,10 +83,19 @@ export default function ResultsView({ poll, isCreator, onFinalize }: ResultsView
     <div className="w-full max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold text-center mb-8">{poll.question}</h1>
       
+      {poll.closesAt && !poll.isClosed && (
+        <div className="mb-6">
+          <CountdownTimer 
+            closesAt={new Date(poll.closesAt)} 
+            onExpire={onTimerExpire || onFinalize}
+          />
+        </div>
+      )}
+      
       <div className="space-y-4 mb-6">
         {poll.options.map((option) => {
           const percentage = getPercentage(animatedVotes[option.id] || 0)
-          const isWinner = poll.finalized && poll.winner?.id === option.id
+          const isWinner = poll.isClosed && poll.winner?.id === option.id
           
           return (
             <div
@@ -113,7 +124,7 @@ export default function ResultsView({ poll, isCreator, onFinalize }: ResultsView
                 {percentage.toFixed(1)}%
               </div>
               
-              {isWinner && poll.finalized && (
+              {isWinner && poll.isClosed && (
                 <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
                   Winner!
                 </div>
@@ -127,7 +138,7 @@ export default function ResultsView({ poll, isCreator, onFinalize }: ResultsView
         Total votes: {poll.totalVotes}
       </div>
 
-      {!poll.finalized && isCreator && poll.totalVotes > 0 && (
+      {!poll.finalized && !poll.closesAt && isCreator && poll.totalVotes > 0 && (
         <div className="mt-8 text-center">
           <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
@@ -143,10 +154,14 @@ export default function ResultsView({ poll, isCreator, onFinalize }: ResultsView
         </div>
       )}
 
-      {poll.finalized && (
+      {poll.isClosed && (
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Results finalized on {new Date(poll.finalizedAt!).toLocaleDateString()}
+            {poll.finalized && poll.finalizedAt
+              ? `Results finalized on ${new Date(poll.finalizedAt).toLocaleDateString()}`
+              : poll.closesAt
+              ? `Voting ended on ${new Date(poll.closesAt).toLocaleDateString()} at ${new Date(poll.closesAt).toLocaleTimeString()}`
+              : 'Voting has ended'}
           </p>
         </div>
       )}

@@ -8,10 +8,19 @@ const MAX_QUESTION_LENGTH = 280
 const MAX_OPTION_LENGTH = 80
 const MAX_OPTIONS = 4
 
+const TIMER_OPTIONS = [
+  { label: 'No Timer', value: 0 },
+  { label: '2 minutes', value: 2 },
+  { label: '5 minutes', value: 5 },
+  { label: '10 minutes', value: 10 },
+  { label: '1 hour', value: 60 }
+]
+
 export default function PollCreator() {
   const router = useRouter()
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState(['', ''])
+  const [duration, setDuration] = useState(0) // default to "No Timer"
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -52,7 +61,8 @@ export default function PollCreator() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: question.trim(),
-          options: filledOptions
+          options: filledOptions,
+          duration: duration > 0 ? duration : undefined
         })
       })
 
@@ -135,6 +145,27 @@ export default function PollCreator() {
             + Add Option
           </button>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Poll Timer (Optional)</label>
+        <p className="text-sm text-gray-600">Set a countdown timer to create urgency</p>
+        <div className="grid grid-cols-3 gap-2">
+          {TIMER_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setDuration(option.value)}
+              className={`py-2 px-4 rounded-lg font-medium transition-all ${
+                duration === option.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (

@@ -16,6 +16,27 @@ export async function POST(
       )
     }
 
+    // First, check if the poll exists and is still open
+    const poll = await db.plico.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!poll) {
+      return NextResponse.json(
+        { error: 'Poll not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if poll is closed
+    const now = new Date()
+    if (poll.finalized || (poll.closesAt !== null && poll.closesAt <= now)) {
+      return NextResponse.json(
+        { error: 'Voting has ended for this poll' },
+        { status: 400 }
+      )
+    }
+
     const option = await db.option.findFirst({
       where: {
         id: body.optionId,

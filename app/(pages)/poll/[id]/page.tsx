@@ -38,6 +38,11 @@ export default function PollPage() {
       // Check if current user is the creator
       const creatorId = getCreatorId(pollId)
       setIsCreator(data.creatorId ? creatorId === data.creatorId : false)
+      
+      // If poll is closed and user hasn't voted, show results
+      if (data.isClosed && !hasVoted(pollId)) {
+        setShowResults(true)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -72,6 +77,11 @@ export default function PollPage() {
     } catch (err) {
       alert('Failed to finalize poll')
     }
+  }
+
+  const handleTimerExpire = () => {
+    // Refresh poll data when timer expires to get updated isClosed status
+    fetchPoll()
   }
 
   if (loading) {
@@ -115,6 +125,7 @@ export default function PollPage() {
           poll={poll} 
           isCreator={isCreator}
           onFinalize={handleFinalize}
+          onTimerExpire={handleTimerExpire}
         />
       ) : (
         <PollView poll={poll} onVoteComplete={handleVoteComplete} />
