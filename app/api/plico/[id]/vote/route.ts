@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { VoteRequest } from '@/lib/types'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { db } = await import('@/lib/db')
   try {
     const body: VoteRequest = await request.json()
     

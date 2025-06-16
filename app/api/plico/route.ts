@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { CreatePlicoRequest } from '@/lib/types'
 import { createPollSchema } from '@/lib/validations'
 import { z } from 'zod'
 
 export async function POST(request: NextRequest) {
+  const { db } = await import('@/lib/db')
   try {
     const body = await request.json()
     

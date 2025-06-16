@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { PlicoWithResults } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { db } = await import('@/lib/db')
   try {
     const plico = await db.plico.findUnique({
       where: { id: params.id },
