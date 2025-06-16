@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Dynamic import to avoid build-time evaluation
+  const { db } = await import('@/lib/db')
   try {
     const body = await request.json()
     const { creatorId } = body
