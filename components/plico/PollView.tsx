@@ -93,9 +93,10 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
+          {/* Timer component - onExpire passes 'timer_expired' to onVoteComplete */}
           <CountdownTimer 
             closesAt={new Date(poll.closesAt)} 
-            onExpire={() => onVoteComplete('timer_expired')} 
+            onExpire={() => onVoteComplete('timer_expired')}
           />
         </motion.div>
       )}
