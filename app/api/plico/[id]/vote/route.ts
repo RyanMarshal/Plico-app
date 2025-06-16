@@ -65,7 +65,6 @@ export async function POST(
       voteCount: updatedOption.voteCount 
     })
   } catch (error) {
-    console.error('Error recording vote:', error)
     return NextResponse.json(
       { error: 'Failed to record vote' },
       { status: 500 }

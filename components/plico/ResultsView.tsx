@@ -136,6 +136,7 @@ const PollOption = memo(function PollOption({
             className="flex items-center gap-1"
           >
             <motion.span
+              aria-hidden="true"
               animate={{ rotate: [0, -10, 10, 0] }}
               transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
             >
@@ -297,6 +298,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         >
           <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-6 py-3 rounded-full font-semibold shadow-md">
             <motion.span
+              aria-hidden="true"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 1, repeat: Infinity, repeatDelay: 2 }}
             >

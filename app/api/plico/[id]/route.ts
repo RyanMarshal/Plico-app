@@ -59,7 +59,6 @@ export async function GET(
     
     return NextResponse.json(result, { headers })
   } catch (error) {
-    console.error('Error fetching plico:', error)
     return NextResponse.json(
       { error: 'Failed to fetch poll' },
       { status: 500 }

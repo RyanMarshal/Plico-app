@@ -110,6 +110,7 @@ const PollOption = memo(function PollOption({
             type="button"
             onClick={() => removeOption(index)}
             className="text-red-400 hover:text-red-600 transition-colors"
+            aria-label={`Remove option ${index + 1}`}
             whileHover={{ scale: 1.2, rotate: 90 }}
             whileTap={{ scale: 0.9 }}
           >
@@ -216,7 +217,7 @@ const PollCreator = memo(function PollCreator() {
         transition={{ delay: 0.05 }}
         className="mb-6"
       >
-        <p className="text-sm font-medium text-gray-600 mb-3">Quick start with a popular question:</p>
+        <h2 className="text-sm font-medium text-gray-600 mb-3">Quick start with a popular question:</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {QUICK_START_QUESTIONS.map((q, index) => (
             <motion.button

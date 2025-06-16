@@ -108,6 +108,8 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
             key={option.id}
             onClick={(e) => handleVote(option.id, e)}
             disabled={isVoting || poll.isClosed}
+            aria-label={`Vote for option: ${option.text}`}
+            aria-pressed={selectedOption === option.id}
             className={`
               w-full p-6 text-left rounded-2xl border-2 transition-all relative overflow-hidden
               ${selectedOption === option.id 
@@ -157,6 +159,9 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
         {isVoting && (
           <motion.div 
             className="mt-6 flex flex-col items-center justify-center"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}

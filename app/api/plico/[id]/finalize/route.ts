@@ -57,7 +57,6 @@ export async function POST(
 
     return NextResponse.json(updatedPoll)
   } catch (error) {
-    console.error('Error finalizing poll:', error)
     return NextResponse.json(
       { error: 'Failed to finalize poll' },
       { status: 500 }

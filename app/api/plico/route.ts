@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Error creating plico:', error)
     return NextResponse.json(
       { error: 'Failed to create plico' },
       { status: 500 }
