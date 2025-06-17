@@ -14,6 +14,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+const animationDuration = 0.5; // Animation duration in seconds
+
 // Lazy load heavy animation components
 const Drumroll = dynamic(() => import('@/components/ui/drumroll'), {
   ssr: false,
@@ -265,8 +267,6 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
   }, [])
 
   useEffect(() => {
-    const animationDuration = 1000 // Define at the top of the effect
-    
     // Check if this is the first time seeing closed results
     if (poll.isClosed && !revealResults && poll.totalVotes > 0) {
       setShowDrumroll(true)
@@ -298,7 +298,7 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
 
       const animate = (timestamp: number) => {
         if (!startTime) startTime = timestamp
-        const progress = Math.min((timestamp - startTime) / animationDuration, 1)
+        const progress = Math.min((timestamp - startTime) / (animationDuration * 1000), 1)
 
         const newVotes: Record<string, number> = {}
         poll.options.forEach(option => {
@@ -331,7 +331,7 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
           setTimeout(() => {
             setShowTieBreaker(false)
           }, 3000)
-        }, animationDuration + 500)
+        }, (animationDuration * 1000) + 500)
       } else if (poll.winner && !poll.isTie) {
         setTimeout(() => {
           setShowConfetti(true)
