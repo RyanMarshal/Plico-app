@@ -18,6 +18,7 @@ function PollPageClient() {
   const [error, setError] = useState('')
   const [showResults, setShowResults] = useState(false)
   const [isCreator, setIsCreator] = useState(false)
+  const [justVoted, setJustVoted] = useState(false)
   
   // Determine the correct emoji based on the state
   let currentEmoji = '🤔' // Default to thinking face
@@ -64,6 +65,16 @@ function PollPageClient() {
     fetchPoll()
   }, [pollId, fetchPoll])
 
+  // Reset justVoted flag after a delay
+  useEffect(() => {
+    if (justVoted) {
+      const timer = setTimeout(() => {
+        setJustVoted(false)
+      }, 3000) // Reset after 3 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [justVoted])
+
   const handleVoteComplete = (votedOptionId: string, rollback?: boolean) => {
     if (rollback) {
       // Rollback the optimistic update
@@ -97,6 +108,7 @@ function PollPageClient() {
       })
     }
     
+    setJustVoted(true)
     setShowResults(true)
   }
 
@@ -196,6 +208,7 @@ function PollPageClient() {
             isCreator={isCreator}
             onFinalize={handleFinalize}
             onTimerExpire={handleTimerExpire}
+            isOptimisticUpdate={justVoted}
           />
         ) : (
           <PollView poll={poll} onVoteComplete={handleVoteComplete} />

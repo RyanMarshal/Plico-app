@@ -40,6 +40,7 @@ interface ResultsViewProps {
   isCreator: boolean
   onFinalize: () => void
   onTimerExpire?: () => void
+  isOptimisticUpdate?: boolean // Flag to indicate if this is from an optimistic update
 }
 
 // Memoize individual option components to prevent re-renders
@@ -157,14 +158,15 @@ const PollOption = memo(function PollOption({
   )
 })
 
-export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, onTimerExpire }: ResultsViewProps) {
+export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, onTimerExpire, isOptimisticUpdate = false }: ResultsViewProps) {
   const [poll, setPoll] = useState(initialPoll)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false) // Don't show loading initially if we have data
   const [animatedVotes, setAnimatedVotes] = useState<Record<string, number>>({})
   const [showTieBreaker, setShowTieBreaker] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showDrumroll, setShowDrumroll] = useState(false)
   const [revealResults, setRevealResults] = useState(false)
+  const [hasAnimated, setHasAnimated] = useState(false)
   const { playChime, playRattle } = useSoundEffects()
   const channelRef = useRef<any>(null)
 
@@ -218,6 +220,13 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
 
     // Fetch initial data to ensure we are synced
     const fetchInitialData = async () => {
+      // If this is an optimistic update, wait longer before syncing with server
+      if (isOptimisticUpdate) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+      
+      if (!isMounted) return
+      
       try {
         const response = await fetch(`/api/plico/${initialPoll.id}`)
         if (!response.ok) {
@@ -226,14 +235,9 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
         const data = await response.json()
         if (isMounted) {
           setPoll(data)
-          setIsLoading(false)
         }
       } catch (error) {
-        // Fall back to initial prop data if fetch fails
-        if (isMounted) {
-          setPoll(initialPoll)
-          setIsLoading(false)
-        }
+        console.error('Failed to fetch poll data:', error)
       }
     }
 
@@ -247,7 +251,7 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
         channelRef.current = null
       }
     }
-  }, [initialPoll]) // Re-run if initial poll changes
+  }, [initialPoll, isOptimisticUpdate]) // Re-run if initial poll or optimistic flag changes
 
   // Memoize percentage calculation
   const getPercentage = useCallback((voteCount: number) => {
@@ -267,36 +271,55 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
       return
     }
 
-    const animationDuration = 1000
-    const steps = 50
-    const stepDuration = animationDuration / steps
-
-    const initialVotes: Record<string, number> = {}
-    poll.options.forEach(option => {
-      initialVotes[option.id] = 0
-    })
-    setAnimatedVotes(initialVotes)
-
-    // Use requestAnimationFrame for smoother animations
-    let animationFrame: number
-    let startTime: number | null = null
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp
-      const progress = Math.min((timestamp - startTime) / animationDuration, 1)
-
-      const newVotes: Record<string, number> = {}
+    // For optimistic updates, show the votes immediately without animation
+    if (isOptimisticUpdate && !hasAnimated) {
+      const immediateVotes: Record<string, number> = {}
       poll.options.forEach(option => {
-        newVotes[option.id] = option.voteCount * progress
+        immediateVotes[option.id] = option.voteCount
       })
-      setAnimatedVotes(newVotes)
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate)
-      }
+      setAnimatedVotes(immediateVotes)
+      setHasAnimated(true)
+      return
     }
 
-    animationFrame = requestAnimationFrame(animate)
+    // Only animate if we haven't animated yet
+    if (!hasAnimated) {
+      const animationDuration = 1000
+      const initialVotes: Record<string, number> = {}
+      poll.options.forEach(option => {
+        initialVotes[option.id] = 0
+      })
+      setAnimatedVotes(initialVotes)
+
+      // Use requestAnimationFrame for smoother animations
+      let animationFrame: number
+      let startTime: number | null = null
+
+      const animate = (timestamp: number) => {
+        if (!startTime) startTime = timestamp
+        const progress = Math.min((timestamp - startTime) / animationDuration, 1)
+
+        const newVotes: Record<string, number> = {}
+        poll.options.forEach(option => {
+          newVotes[option.id] = option.voteCount * progress
+        })
+        setAnimatedVotes(newVotes)
+
+        if (progress < 1) {
+          animationFrame = requestAnimationFrame(animate)
+        } else {
+          setHasAnimated(true)
+        }
+      }
+
+      animationFrame = requestAnimationFrame(animate)
+
+      return () => {
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame)
+        }
+      }
+    }
 
     // Show winner animations if poll is closed (either finalized or timer expired)
     if (poll.isClosed && revealResults) {
@@ -315,16 +338,10 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
           setTimeout(() => {
             setShowConfetti(false)
           }, 5000)
-        }, animationDuration + 500)
+        }, 1500)
       }
     }
-
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame)
-      }
-    }
-  }, [poll, revealResults, playChime, playRattle])
+  }, [poll, revealResults, playChime, playRattle, isOptimisticUpdate, hasAnimated])
 
 
   // Show loading state while fetching initial data
