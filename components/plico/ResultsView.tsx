@@ -357,30 +357,30 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
       </motion.h1>
       
       <AnimatePresence mode="wait">
-        {showDrumroll && currentPoll.isClosed ? (
+        {showDrumroll && poll.isClosed ? (
           <Drumroll onComplete={handleDrumrollComplete} duration={2000} />
         ) : null}
       </AnimatePresence>
       
-      {currentPoll.closesAt && !currentPoll.isClosed && (
+      {poll.closesAt && !poll.isClosed && (
         <div className="mb-6">
           <CountdownTimer 
-            closesAt={new Date(currentPoll.closesAt)} 
+            closesAt={new Date(poll.closesAt)} 
             onExpire={onTimerExpire || onFinalize}
           />
         </div>
       )}
       
-      {(!showDrumroll || !currentPoll.isClosed) && (
+      {(!showDrumroll || !poll.isClosed) && (
         <motion.div 
           className="space-y-4 mb-6 pr-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          {currentPoll.options.map((option, index) => {
+          {poll.options.map((option, index) => {
             const percentage = getPercentage(animatedVotes[option.id] || 0)
-            const isWinner = currentPoll.isClosed && currentPoll.winner?.id === option.id && revealResults
+            const isWinner = poll.isClosed && poll.winner?.id === option.id && revealResults
             
             return (
               <PollOption
@@ -396,7 +396,7 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
         </motion.div>
       )}
 
-      {(!showDrumroll || !currentPoll.isClosed) && (
+      {(!showDrumroll || !poll.isClosed) && (
         <motion.div 
           className="text-center mt-6"
           initial={{ opacity: 0, y: 20 }}
@@ -411,12 +411,12 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
             >
               🗳️
             </motion.span>
-            Total votes: {currentPoll.totalVotes}
+            Total votes: {poll.totalVotes}
           </div>
         </motion.div>
       )}
 
-      {!currentPoll.finalized && !currentPoll.closesAt && isCreator && currentPoll.totalVotes > 0 && (
+      {!poll.finalized && !poll.closesAt && isCreator && poll.totalVotes > 0 && (
         <motion.div 
           className="mt-8 text-center"
           initial={{ opacity: 0, y: 20 }}
@@ -443,7 +443,7 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
         </motion.div>
       )}
 
-      {currentPoll.isClosed && (
+      {poll.isClosed && (
         <motion.div 
           className="mt-8 text-center"
           initial={{ opacity: 0 }}
@@ -452,22 +452,22 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
         >
           <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-full font-medium">
             <span className="text-lg">🏏</span>
-            {currentPoll.finalized && currentPoll.finalizedAt
-              ? `Results finalized on ${new Date(currentPoll.finalizedAt).toLocaleDateString()}`
-              : currentPoll.closesAt
-              ? `Voting ended on ${new Date(currentPoll.closesAt).toLocaleDateString()} at ${new Date(currentPoll.closesAt).toLocaleTimeString()}`
+            {poll.finalized && poll.finalizedAt
+              ? `Results finalized on ${new Date(poll.finalizedAt).toLocaleDateString()}`
+              : poll.closesAt
+              ? `Voting ended on ${new Date(poll.closesAt).toLocaleDateString()} at ${new Date(poll.closesAt).toLocaleTimeString()}`
               : 'Voting has ended'}
           </div>
         </motion.div>
       )}
 
       <TieBreakerWheel
-        options={currentPoll.options.map(opt => ({
+        options={poll.options.map(opt => ({
           id: opt.id,
           text: opt.text,
           color: `hsl(${Math.random() * 360}, 70%, 50%)`
         }))}
-        winnerId={currentPoll.winner?.id || ''}
+        winnerId={poll.winner?.id || ''}
         isVisible={showTieBreaker}
         onComplete={() => setShowTieBreaker(false)}
       />
