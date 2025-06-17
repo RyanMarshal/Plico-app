@@ -81,14 +81,18 @@ const TieBreakerWheel = memo(function TieBreakerWheel({ options, winnerId, isVis
                   
                   const largeArc = segmentAngle > 180 ? 1 : 0
                   
+                  const pathData = `M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`
+                  
                   return (
                     <g key={option.id}>
-                      <path
-                        d={`M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                        fill={option.color}
-                        stroke="white"
-                        strokeWidth="2"
-                      />
+                      {pathData && (
+                        <path
+                          d={pathData}
+                          fill={option.color}
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                      )}
                       <text
                         x={100 + 50 * Math.cos((startRad + endRad) / 2)}
                         y={100 + 50 * Math.sin((startRad + endRad) / 2)}

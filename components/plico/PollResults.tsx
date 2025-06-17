@@ -6,13 +6,7 @@ import CountdownTimer from './CountdownTimer'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { useSoundEffects } from '@/hooks/useSoundEffects'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabase } from '@/lib/supabase-client'
 
 const animationDuration = 0.5; // Animation duration in seconds
 
@@ -180,6 +174,8 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
 
     // Set up real-time subscription (only if poll is not closed)
     if (!initialPoll.isClosed) {
+      console.log('Setting up real-time subscription for poll:', initialPoll.id)
+      
       const channel = supabase
         .channel(`plico-results-${initialPoll.id}`)
         .on(
@@ -191,6 +187,7 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
             filter: `plicoId=eq.${initialPoll.id}`,
           },
           (payload) => {
+            console.log('Received real-time update:', payload)
             if (!isMounted) return
             
             const updatedOption = payload.new
@@ -215,7 +212,21 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
             })
           }
         )
-        .subscribe()
+        .subscribe((status, error) => {
+          console.log('Subscription status:', status)
+          if (error) {
+            console.error('Subscription error:', error)
+          }
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to real-time updates')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Failed to subscribe to real-time updates')
+          } else if (status === 'TIMED_OUT') {
+            console.error('Subscription timed out')
+          } else if (status === 'CLOSED') {
+            console.error('Subscription closed')
+          }
+        })
 
       channelRef.current = channel
     }
