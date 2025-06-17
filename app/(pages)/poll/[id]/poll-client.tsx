@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { PlicoWithResults } from '@/lib/types'
 import { hasVoted, getCreatorId } from '@/lib/cookies'
 import PollView from '@/components/plico/PollView'
-import ResultsView from '@/components/plico/ResultsView'
+import PollResults from '@/components/plico/PollResults'
 import { motion } from 'framer-motion'
 import { MorphLoader } from '@/components/ui/plico-loader'
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon'
@@ -203,7 +203,7 @@ function PollPageClient() {
         transition={{ duration: 0.5 }}
       >
         {showResults ? (
-          <ResultsView 
+          <PollResults 
             poll={poll} 
             isCreator={isCreator}
             onFinalize={handleFinalize}

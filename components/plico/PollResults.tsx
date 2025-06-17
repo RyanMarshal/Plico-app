@@ -160,7 +160,7 @@ const PollOption = memo(function PollOption({
   )
 })
 
-export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, onTimerExpire, isOptimisticUpdate = false }: ResultsViewProps) {
+export default function PollResults({ poll: initialPoll, isCreator, onFinalize, onTimerExpire, isOptimisticUpdate = false }: ResultsViewProps) {
   const [poll, setPoll] = useState(initialPoll)
   const [isLoading, setIsLoading] = useState(false) // Don't show loading initially if we have data
   const [animatedVotes, setAnimatedVotes] = useState<Record<string, number>>({})
