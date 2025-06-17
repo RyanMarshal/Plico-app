@@ -185,6 +185,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
     }
 
     fetchInitialData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poll.id]) // Only run once on mount (poll.id won't change)
 
   // Memoize percentage calculation
