@@ -164,14 +164,28 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
 
   const totalVotes = currentPoll.totalVotes || 1
 
-  // Update currentPoll when poll prop changes and mark as initialized
+  // Fetch initial poll data on component mount
   useEffect(() => {
-    setCurrentPoll(poll)
-    // Mark as initialized once we have poll data
-    if (poll && poll.options && poll.options.length > 0) {
-      setIsInitialized(true)
+    const fetchInitialData = async () => {
+      try {
+        const response = await fetch(`/api/plico/${poll.id}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch poll data')
+        }
+        const data = await response.json()
+        setCurrentPoll(data)
+        setIsInitialized(true)
+      } catch (error) {
+        // Fall back to prop data if fetch fails
+        setCurrentPoll(poll)
+        if (poll && poll.options && poll.options.length > 0) {
+          setIsInitialized(true)
+        }
+      }
     }
-  }, [poll])
+
+    fetchInitialData()
+  }, [poll.id]) // Only run once on mount (poll.id won't change)
 
   // Memoize percentage calculation
   const getPercentage = useCallback((voteCount: number) => {
