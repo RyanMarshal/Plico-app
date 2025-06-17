@@ -6,7 +6,13 @@ import CountdownTimer from './CountdownTimer'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { useSoundEffects } from '@/hooks/useSoundEffects'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { createClient } from '@supabase/supabase-js'
+
+// Create Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // Lazy load heavy animation components
 const Drumroll = dynamic(() => import('@/components/ui/drumroll'), {
@@ -151,42 +157,97 @@ const PollOption = memo(function PollOption({
   )
 })
 
-export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire }: ResultsViewProps) {
+export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, onTimerExpire }: ResultsViewProps) {
+  const [poll, setPoll] = useState(initialPoll)
+  const [isLoading, setIsLoading] = useState(true)
   const [animatedVotes, setAnimatedVotes] = useState<Record<string, number>>({})
   const [showTieBreaker, setShowTieBreaker] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showDrumroll, setShowDrumroll] = useState(false)
   const [revealResults, setRevealResults] = useState(false)
-  const [currentPoll, setCurrentPoll] = useState(poll)
-  const [isInitialized, setIsInitialized] = useState(false)
   const { playChime, playRattle } = useSoundEffects()
   const channelRef = useRef<any>(null)
 
-  const totalVotes = currentPoll.totalVotes || 1
+  const totalVotes = poll.totalVotes || 1
 
-  // Fetch initial poll data on component mount
+  // Single unified effect for initial data fetch and real-time subscription
   useEffect(() => {
+    let isMounted = true
+
+    // Set up real-time subscription (only if poll is not closed)
+    if (!initialPoll.isClosed) {
+      const channel = supabase
+        .channel(`plico-results-${initialPoll.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'Option',
+            filter: `plicoId=eq.${initialPoll.id}`,
+          },
+          (payload) => {
+            if (!isMounted) return
+            
+            const updatedOption = payload.new
+            setPoll((currentPoll) => {
+              if (!currentPoll) return currentPoll
+              
+              // Create a new poll object to ensure React re-renders
+              const updatedOptions = currentPoll.options.map((opt) =>
+                opt.id === updatedOption.id 
+                  ? { ...opt, voteCount: updatedOption.voteCount || 0 } 
+                  : opt
+              )
+              
+              // Calculate new total votes
+              const newTotalVotes = updatedOptions.reduce((sum, opt) => sum + opt.voteCount, 0)
+              
+              return {
+                ...currentPoll,
+                options: updatedOptions,
+                totalVotes: newTotalVotes
+              }
+            })
+          }
+        )
+        .subscribe()
+
+      channelRef.current = channel
+    }
+
+    // Fetch initial data to ensure we are synced
     const fetchInitialData = async () => {
       try {
-        const response = await fetch(`/api/plico/${poll.id}`)
+        const response = await fetch(`/api/plico/${initialPoll.id}`)
         if (!response.ok) {
           throw new Error('Failed to fetch poll data')
         }
         const data = await response.json()
-        setCurrentPoll(data)
-        setIsInitialized(true)
+        if (isMounted) {
+          setPoll(data)
+          setIsLoading(false)
+        }
       } catch (error) {
-        // Fall back to prop data if fetch fails
-        setCurrentPoll(poll)
-        if (poll && poll.options && poll.options.length > 0) {
-          setIsInitialized(true)
+        // Fall back to initial prop data if fetch fails
+        if (isMounted) {
+          setPoll(initialPoll)
+          setIsLoading(false)
         }
       }
     }
 
     fetchInitialData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [poll.id]) // Only run once on mount (poll.id won't change)
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, [initialPoll]) // Re-run if initial poll changes
 
   // Memoize percentage calculation
   const getPercentage = useCallback((voteCount: number) => {
@@ -201,7 +262,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
 
   useEffect(() => {
     // Check if this is the first time seeing closed results
-    if (currentPoll.isClosed && !revealResults && currentPoll.totalVotes > 0) {
+    if (poll.isClosed && !revealResults && poll.totalVotes > 0) {
       setShowDrumroll(true)
       return
     }
@@ -211,7 +272,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
     const stepDuration = animationDuration / steps
 
     const initialVotes: Record<string, number> = {}
-    currentPoll.options.forEach(option => {
+    poll.options.forEach(option => {
       initialVotes[option.id] = 0
     })
     setAnimatedVotes(initialVotes)
@@ -225,7 +286,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
       const progress = Math.min((timestamp - startTime) / animationDuration, 1)
 
       const newVotes: Record<string, number> = {}
-      currentPoll.options.forEach(option => {
+      poll.options.forEach(option => {
         newVotes[option.id] = option.voteCount * progress
       })
       setAnimatedVotes(newVotes)
@@ -238,8 +299,8 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
     animationFrame = requestAnimationFrame(animate)
 
     // Show winner animations if poll is closed (either finalized or timer expired)
-    if (currentPoll.isClosed && revealResults) {
-      if (currentPoll.isTie && currentPoll.winner) {
+    if (poll.isClosed && revealResults) {
+      if (poll.isTie && poll.winner) {
         setTimeout(() => {
           setShowTieBreaker(true)
           playRattle() // Play rattle sound for tie-breaker
@@ -247,7 +308,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
             setShowTieBreaker(false)
           }, 3000)
         }, animationDuration + 500)
-      } else if (currentPoll.winner && !currentPoll.isTie) {
+      } else if (poll.winner && !poll.isTie) {
         setTimeout(() => {
           setShowConfetti(true)
           playChime() // Play chime sound for celebration
@@ -263,68 +324,26 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         cancelAnimationFrame(animationFrame)
       }
     }
-  }, [currentPoll, revealResults, playChime, playRattle])
+  }, [poll, revealResults, playChime, playRattle])
 
-  // Real-time subscription for live updates
-  useEffect(() => {
-    // Don't start subscription until initial data is loaded
-    if (!isInitialized) {
-      return
-    }
 
-    const supabase = getSupabaseClient()
-    
-    if (!supabase || currentPoll.isClosed) {
-      return
-    }
-
-    // Subscribe to changes on the Option table for this poll
-    const channel = supabase
-      .channel(`poll-${poll.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'Option',
-          filter: `plicoId=eq.${poll.id}`
-        },
-        (payload: any) => {
-          // Update the local state with new vote data
-          setCurrentPoll(prev => {
-            const updatedOptions = prev.options.map(option => {
-              if (option.id === payload.new.id) {
-                return {
-                  ...option,
-                  voteCount: payload.new.voteCount || 0
-                }
-              }
-              return option
-            })
-            
-            // Calculate new total votes
-            const newTotalVotes = updatedOptions.reduce((sum, opt) => sum + opt.voteCount, 0)
-            
-            return {
-              ...prev,
-              options: updatedOptions,
-              totalVotes: newTotalVotes
-            }
-          })
-        }
-      )
-      .subscribe()
-
-    channelRef.current = channel
-
-    // Cleanup subscription on unmount
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-      }
-    }
-  }, [poll.id, currentPoll.isClosed, isInitialized])
+  // Show loading state while fetching initial data
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-2xl mx-auto p-6">
+        <div className="text-center">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
+            <div className="space-y-3">
+              <div className="h-20 bg-gray-200 rounded"></div>
+              <div className="h-20 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+          <p className="text-gray-600 mt-4">Loading results...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
@@ -334,7 +353,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {currentPoll.question}
+        {poll.question}
       </motion.h1>
       
       <AnimatePresence mode="wait">
