@@ -265,6 +265,8 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
   }, [])
 
   useEffect(() => {
+    const animationDuration = 1000 // Define at the top of the effect
+    
     // Check if this is the first time seeing closed results
     if (poll.isClosed && !revealResults && poll.totalVotes > 0) {
       setShowDrumroll(true)
@@ -284,7 +286,6 @@ export default function ResultsView({ poll: initialPoll, isCreator, onFinalize, 
 
     // Only animate if we haven't animated yet
     if (!hasAnimated) {
-      const animationDuration = 1000
       const initialVotes: Record<string, number> = {}
       poll.options.forEach(option => {
         initialVotes[option.id] = 0
