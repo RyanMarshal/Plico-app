@@ -115,7 +115,7 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
             aria-label={`Vote for option: ${option.text}`}
             aria-pressed={selectedOption === option.id}
             className={`
-              w-full p-6 text-left rounded-2xl border-2 transition-all relative overflow-hidden
+              w-full p-5 sm:p-6 min-h-[60px] text-left rounded-2xl border-2 transition-all relative overflow-hidden active:scale-[0.98]
               ${selectedOption === option.id 
                 ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20' 
                 : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm'
@@ -126,9 +126,14 @@ const PollView = memo(function PollView({ poll, onVoteComplete }: PollViewProps)
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.3 + index * 0.1 }}
             whileHover={!isVoting && !poll.isClosed ? { 
-              scale: 1.02,
-              y: -2,
-              boxShadow: "0 10px 30px -10px rgba(168, 85, 247, 0.3)"
+              scale: 1.03,
+              y: -4,
+              boxShadow: "0 15px 35px -10px rgba(168, 85, 247, 0.4)",
+              transition: {
+                type: "spring",
+                stiffness: 600,
+                damping: 30
+              }
             } : {}}
             whileTap={!isVoting && !poll.isClosed ? { scale: 0.98 } : {}}
           >

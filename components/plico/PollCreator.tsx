@@ -248,7 +248,7 @@ const PollCreator = memo(function PollCreator() {
         className="mb-6"
       >
         <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Quick start with a popular question:</h2>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide dark:scrollbar-visible">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           {QUICK_START_QUESTIONS.map((q, index) => (
             <motion.button
               key={index}
@@ -265,7 +265,7 @@ const PollCreator = memo(function PollCreator() {
                 }
                 setOptions(options.slice(0, 4))
               }}
-              className={`group flex items-center gap-2 px-4 py-2 border-2 rounded-full transition-all whitespace-nowrap ${
+              className={`group flex items-center gap-2 px-4 py-3 min-h-[44px] border-2 rounded-full transition-all whitespace-nowrap active:scale-95 ${
                 question === q.text 
                   ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-transparent text-white' 
                   : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-gray-700'

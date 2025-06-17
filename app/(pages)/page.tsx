@@ -17,7 +17,7 @@ export default function HomePage() {
         transition={{ duration: 0.6 }}
       >
         <motion.h1 
-          className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent leading-tight pb-2"
+          className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent leading-tight pb-2"
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.5, type: "spring" }}
@@ -26,7 +26,7 @@ export default function HomePage() {
         </motion.h1>
         <div className="inline-block">
           <motion.p 
-            className="text-xl md:text-2xl text-gray-600 dark:text-gray-300"
+            className="text-lg sm:text-xl md:text-2xl text-gray-600 dark:text-gray-300 px-4 sm:px-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
