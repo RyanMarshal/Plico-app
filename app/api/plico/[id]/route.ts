@@ -34,14 +34,25 @@ export async function GET(
     let winner = winners.length === 1 ? winners[0] : undefined
     const isTie = winners.length > 1
     
-    if (isTie) {
-      const randomIndex = Math.floor(Math.random() * winners.length)
-      winner = winners[randomIndex]
-    }
-
     // Check if poll is closed (either by timer or finalization)
     const now = new Date()
     const isClosed = plico.finalized || (plico.closesAt !== null && plico.closesAt <= now)
+    
+    // For tie-breakers in closed polls
+    if (isTie && isClosed) {
+      if (plico.tieBreakWinnerId) {
+        // Use stored tie-breaker winner for finalized polls
+        winner = plico.options.find(opt => opt.id === plico.tieBreakWinnerId)
+      } else {
+        // For timer-expired polls without stored winner, use deterministic selection
+        // This ensures all users see the same winner
+        const sortedWinners = winners.sort((a, b) => a.id.localeCompare(b.id))
+        // Use poll ID as seed for consistent selection
+        const seed = plico.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+        const selectedIndex = seed % sortedWinners.length
+        winner = sortedWinners[selectedIndex]
+      }
+    }
 
     const result: PlicoWithResults = {
       ...plico,

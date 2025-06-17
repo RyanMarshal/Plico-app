@@ -4,6 +4,8 @@ import './globals.css'
 import AnimatedGradient from '@/components/ui/animated-gradient-optimized'
 import { SoundProvider } from '@/contexts/SoundContext'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+import { Analytics } from '@vercel/analytics/react'
 import dynamic from 'next/dynamic'
 
 // Lazy load the sound toggle to avoid hydration issues
@@ -65,6 +67,8 @@ export default function RootLayout({
             </main>
           </SoundProvider>
         </ThemeProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   )

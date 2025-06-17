@@ -15,6 +15,7 @@ model Plico {
   finalized  Boolean   @default(false)
   finalizedAt DateTime?
   closesAt   DateTime?
+  tieBreakWinnerId String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }

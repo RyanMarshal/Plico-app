@@ -44,12 +44,37 @@ export async function POST(
       )
     }
 
+    // Get the poll with options to check for ties
+    const pollWithOptions = await db.plico.findUnique({
+      where: { id: params.id },
+      include: { options: true }
+    })
+
+    if (!pollWithOptions) {
+      return NextResponse.json(
+        { error: 'Poll not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check for ties
+    const maxVotes = Math.max(...pollWithOptions.options.map(opt => opt.voteCount))
+    const winners = pollWithOptions.options.filter(opt => opt.voteCount === maxVotes && opt.voteCount > 0)
+    
+    let tieBreakWinnerId = undefined
+    if (winners.length > 1) {
+      // Multiple winners - select one randomly for tie-breaker
+      const randomIndex = Math.floor(Math.random() * winners.length)
+      tieBreakWinnerId = winners[randomIndex].id
+    }
+
     // Update poll to finalized
     const updatedPoll = await db.plico.update({
       where: { id: params.id },
       data: {
         finalized: true,
-        finalizedAt: new Date()
+        finalizedAt: new Date(),
+        tieBreakWinnerId: tieBreakWinnerId
       },
       include: {
         options: true

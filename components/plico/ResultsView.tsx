@@ -158,14 +158,19 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
   const [showDrumroll, setShowDrumroll] = useState(false)
   const [revealResults, setRevealResults] = useState(false)
   const [currentPoll, setCurrentPoll] = useState(poll)
+  const [isInitialized, setIsInitialized] = useState(false)
   const { playChime, playRattle } = useSoundEffects()
   const channelRef = useRef<any>(null)
 
   const totalVotes = currentPoll.totalVotes || 1
 
-  // Update currentPoll when poll prop changes
+  // Update currentPoll when poll prop changes and mark as initialized
   useEffect(() => {
     setCurrentPoll(poll)
+    // Mark as initialized once we have poll data
+    if (poll && poll.options && poll.options.length > 0) {
+      setIsInitialized(true)
+    }
   }, [poll])
 
   // Memoize percentage calculation
@@ -247,6 +252,11 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
 
   // Real-time subscription for live updates
   useEffect(() => {
+    // Don't start subscription until initial data is loaded
+    if (!isInitialized) {
+      return
+    }
+
     const supabase = getSupabaseClient()
     
     if (!supabase || currentPoll.isClosed) {
@@ -299,7 +309,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
         channelRef.current = null
       }
     }
-  }, [poll.id, currentPoll.isClosed])
+  }, [poll.id, currentPoll.isClosed, isInitialized])
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
@@ -329,7 +339,7 @@ export default function ResultsView({ poll, isCreator, onFinalize, onTimerExpire
       
       {(!showDrumroll || !currentPoll.isClosed) && (
         <motion.div 
-          className="space-y-4 mb-6"
+          className="space-y-4 mb-6 pr-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
