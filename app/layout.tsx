@@ -28,10 +28,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Plico - Create Quick Polls',
+    default: 'Plico: Stop arguing. Send a Plico.',
     template: '%s | Plico'
   },
-  description: 'Create and share polls instantly. No sign-up required. Get instant results.',
+  description: 'The fastest, most fun way to make a group decision. Create a dead-simple poll in seconds and get a final answer, finally.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   keywords: ['polls', 'voting', 'quick polls', 'instant polls', 'online voting', 'survey', 'opinion'],
   authors: [{ name: 'Plico Team' }],
@@ -44,8 +44,8 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Plico - Create Quick Polls',
-    description: 'Create and share polls instantly. No sign-up required. Get instant results.',
+    title: 'Plico: Stop arguing. Send a Plico.',
+    description: 'The fastest, most fun way to make a group decision. Create a dead-simple poll in seconds and get a final answer, finally.',
     url: '/',
     siteName: 'Plico',
     locale: 'en_US',
@@ -53,8 +53,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Plico - Create Quick Polls',
-    description: 'Create and share polls instantly. No sign-up required. Get instant results.',
+    title: 'Plico: Stop arguing. Send a Plico.',
+    description: 'The fastest, most fun way to make a group decision. Create a dead-simple poll in seconds and get a final answer, finally.',
     creator: '@plico',
   },
 }
