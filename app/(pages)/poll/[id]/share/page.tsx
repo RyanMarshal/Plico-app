@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MorphLoader } from '@/components/ui/plico-loader'
 import dynamic from 'next/dynamic'
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon'
+import { CheckIcon, ClipboardDocumentIcon, ShareIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon } from '@heroicons/react/24/solid'
 
 // Lazy load confetti for better performance
 const PhysicsConfetti = dynamic(() => import('@/components/ui/physics-confetti'), {
@@ -149,23 +151,7 @@ export default function SharePage() {
                 repeatDelay: 3
               }}
             >
-              <motion.div
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-              >
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <motion.path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={3} 
-                    d="M5 13l4 4L19 7"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.5, delay: 0.5 }}
-                  />
-                </svg>
-              </motion.div>
+              <CheckCircleIcon className="w-12 h-12 text-white" />
             </motion.div>
             <motion.h1 
               className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent leading-tight pb-1"
@@ -225,37 +211,13 @@ export default function SharePage() {
                   >
                     {copied ? (
                       <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <motion.path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2.5} 
-                            d="M5 13l4 4L19 7"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 0.3 }}
-                          />
-                        </svg>
+                        <CheckIcon className="w-5 h-5" />
                         <span>Copied!</span>
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <svg className="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.032 4.026a9.001 9.001 0 01-7.432 3.974A9 9 0 113 12a9.001 9.001 0 017.432-3.974m1.867 4.026c.202-.404.316-.86.316-1.342 0-.482-.114-.938-.316-1.342m-1.867 2.684a3 3 0 110-2.684M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
+                        <ClipboardDocumentIcon className="w-5 h-5 hidden sm:block" />
+                        <ShareIcon className="w-5 h-5 sm:hidden" />
                         <span className="hidden sm:inline">Copy Link</span>
                         <span className="sm:hidden">Share</span>
                       </>

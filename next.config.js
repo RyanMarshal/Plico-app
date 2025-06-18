@@ -11,6 +11,17 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
   },
   swcMinify: true,
+  // Webpack configuration for HMR
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Ensure HMR WebSocket connects to the correct port
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      }
+    }
+    return config
+  },
   // Security headers
   async headers() {
     return [

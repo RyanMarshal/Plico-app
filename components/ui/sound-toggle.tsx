@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Volume2, VolumeX } from 'lucide-react'
+import { SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/outline'
 import { useSoundContext } from '@/contexts/SoundContext'
 import { memo } from 'react'
 
@@ -22,9 +22,9 @@ const SoundToggle = memo(function SoundToggle() {
         transition={{ duration: 0.3 }}
       >
         {isMuted ? (
-          <VolumeX className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <SpeakerXMarkIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         ) : (
-          <Volume2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <SpeakerWaveIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />
         )}
       </motion.div>
       

@@ -6,7 +6,7 @@ import CountdownTimer from './CountdownTimer'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import { useSoundEffects } from '@/hooks/useSoundEffects'
-import { supabase } from '@/lib/supabase-client'
+import { subscriptionManager } from '@/lib/subscription-manager'
 
 const animationDuration = 0.5; // Animation duration in seconds
 
@@ -164,107 +164,49 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
   const [revealResults, setRevealResults] = useState(false)
   const [hasAnimated, setHasAnimated] = useState(false)
   const { playChime, playRattle } = useSoundEffects()
-  const channelRef = useRef<any>(null)
 
   const totalVotes = poll.totalVotes || 1
 
-  // Single unified effect for initial data fetch and real-time subscription
+  // Update internal poll state when initialPoll prop changes
   useEffect(() => {
-    let isMounted = true
+    setPoll(initialPoll)
+  }, [initialPoll])
 
-    // Set up real-time subscription (only if poll is not closed)
-    if (!initialPoll.isClosed) {
-      console.log('Setting up real-time subscription for poll:', initialPoll.id)
-      
-      const channel = supabase
-        .channel(`plico-results-${initialPoll.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'Option',
-            filter: `plicoId=eq.${initialPoll.id}`,
-          },
-          (payload) => {
-            console.log('Received real-time update:', payload)
-            if (!isMounted) return
-            
-            const updatedOption = payload.new
-            setPoll((currentPoll) => {
-              if (!currentPoll) return currentPoll
-              
-              // Create a new poll object to ensure React re-renders
-              const updatedOptions = currentPoll.options.map((opt) =>
-                opt.id === updatedOption.id 
-                  ? { ...opt, voteCount: updatedOption.voteCount || 0 } 
-                  : opt
-              )
-              
-              // Calculate new total votes
-              const newTotalVotes = updatedOptions.reduce((sum, opt) => sum + opt.voteCount, 0)
-              
-              return {
-                ...currentPoll,
-                options: updatedOptions,
-                totalVotes: newTotalVotes
-              }
-            })
-          }
-        )
-        .subscribe((status, error) => {
-          console.log('Subscription status:', status)
-          if (error) {
-            console.error('Subscription error:', error)
-          }
-          if (status === 'SUBSCRIBED') {
-            console.log('Successfully subscribed to real-time updates')
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('Failed to subscribe to real-time updates')
-          } else if (status === 'TIMED_OUT') {
-            console.error('Subscription timed out')
-          } else if (status === 'CLOSED') {
-            console.error('Subscription closed')
-          }
-        })
+  // Real-time subscription effect
+  useEffect(() => {
+    // Skip if poll is closed
+    if (initialPoll.isClosed) return
 
-      channelRef.current = channel
-    }
-
-    // Fetch initial data to ensure we are synced
-    const fetchInitialData = async () => {
-      // If this is an optimistic update, wait longer before syncing with server
-      if (isOptimisticUpdate) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
-      }
+    const channelName = `plico-results-${initialPoll.id}`
+    
+    // Define the callback function that will handle updates
+    const handleRealtimeUpdate = (payload: any) => {
+      const updatedOption = payload.new
       
-      if (!isMounted) return
-      
-      try {
-        const response = await fetch(`/api/plico/${initialPoll.id}`)
-        if (!response.ok) {
-          throw new Error('Failed to fetch poll data')
+      setPoll((currentPoll) => {
+        if (!currentPoll) return currentPoll
+        
+        return {
+          ...currentPoll,
+          options: currentPoll.options.map((opt) =>
+            opt.id === updatedOption.id ? { ...opt, voteCount: updatedOption.voteCount } : opt
+          ),
+          totalVotes: currentPoll.options.reduce((sum, opt) => {
+            return sum + (opt.id === updatedOption.id ? updatedOption.voteCount : opt.voteCount)
+          }, 0)
         }
-        const data = await response.json()
-        if (isMounted) {
-          setPoll(data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch poll data:', error)
-      }
+      })
     }
-
-    fetchInitialData()
-
-    // Cleanup function
+    
+    // Subscribe to real-time updates
+    subscriptionManager.subscribe(channelName, handleRealtimeUpdate)
+    
+    // Cleanup function to unsubscribe when component unmounts or dependencies change
     return () => {
-      isMounted = false
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-      }
+      subscriptionManager.unsubscribe(channelName, handleRealtimeUpdate)
     }
-  }, [initialPoll, isOptimisticUpdate]) // Re-run if initial poll or optimistic flag changes
+  }, [initialPoll.id, initialPoll.isClosed])
+
 
   // Memoize percentage calculation
   const getPercentage = useCallback((voteCount: number) => {
@@ -277,6 +219,7 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
     setRevealResults(true)
   }, [])
 
+  // Effect for initial animation only
   useEffect(() => {
     // Check if this is the first time seeing closed results
     if (poll.isClosed && !revealResults && poll.totalVotes > 0) {
@@ -332,7 +275,22 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
         }
       }
     }
+  }, [poll, isOptimisticUpdate, hasAnimated]) // Include poll for initial data
 
+  // Separate effect for updating votes when poll data changes
+  useEffect(() => {
+    // Always update the animated votes when poll changes (after initial animation)
+    if (hasAnimated) {
+      const currentVotes: Record<string, number> = {}
+      poll.options.forEach(option => {
+        currentVotes[option.id] = option.voteCount
+      })
+      setAnimatedVotes(currentVotes)
+    }
+  }, [poll, hasAnimated])
+
+  // Effect for winner animations
+  useEffect(() => {
     // Show winner animations if poll is closed (either finalized or timer expired)
     if (poll.isClosed && revealResults) {
       if (poll.isTie && poll.winner) {
@@ -353,7 +311,7 @@ export default function PollResults({ poll: initialPoll, isCreator, onFinalize, 
         }, 1500)
       }
     }
-  }, [poll, revealResults, playChime, playRattle, isOptimisticUpdate, hasAnimated])
+  }, [poll.isClosed, poll.isTie, poll.winner, revealResults, playChime, playRattle])
 
 
   // Show loading state while fetching initial data

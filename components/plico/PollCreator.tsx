@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { cn, getSmartDefaultDays, getSmartDefaultTimes } from '@/lib/utils'
 import { useSoundEffects } from '@/hooks/useSoundEffects'
+import { PlusCircleIcon } from '@heroicons/react/24/outline'
 
 const MAX_QUESTION_LENGTH = 280
 const MAX_OPTION_LENGTH = 80
@@ -315,7 +316,8 @@ const PollCreator = memo(function PollCreator() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            + Add Option
+            <PlusCircleIcon className="w-5 h-5 inline mr-2" />
+            Add Option
           </motion.button>
         )}
       </motion.div>

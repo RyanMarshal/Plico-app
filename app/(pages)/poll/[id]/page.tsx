@@ -49,6 +49,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       openGraph: {
         title: question,
         description: description,
+        url: `/poll/${pollId}`,
         images: [
           {
             url: ogImageUrl.toString(),
@@ -65,6 +66,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
         title: question,
         description: description,
         images: [ogImageUrl.toString()],
+        creator: '@plico',
       },
     }
   } catch (error) {

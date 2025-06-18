@@ -27,8 +27,47 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Plico - Create Quick Polls',
-  description: 'Create and share polls instantly',
+  title: {
+    default: 'Plico - Create Quick Polls',
+    template: '%s | Plico'
+  },
+  description: 'Create and share polls instantly. No sign-up required. Get instant results.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+  keywords: ['polls', 'voting', 'quick polls', 'instant polls', 'online voting', 'survey', 'opinion'],
+  authors: [{ name: 'Plico Team' }],
+  creator: 'Plico',
+  publisher: 'Plico',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  manifest: '/manifest.json',
+  openGraph: {
+    title: 'Plico - Create Quick Polls',
+    description: 'Create and share polls instantly. No sign-up required. Get instant results.',
+    url: '/',
+    siteName: 'Plico',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Plico - Create Quick Polls',
+    description: 'Create and share polls instantly. No sign-up required. Get instant results.',
+    creator: '@plico',
+  },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: '#1f2937' }
+  ],
 }
 
 export default function RootLayout({

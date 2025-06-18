@@ -115,7 +115,7 @@ export function MorphLoader({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
         className="w-full h-full"
       >
         <motion.path
-          d="M 25,50 Q 25,25 50,25 Q 75,25 75,50 Q 75,75 50,75 Q 25,75 25,50"
+          initial={{ d: "M 25,50 Q 25,25 50,25 Q 75,25 75,50 Q 75,75 50,75 Q 25,75 25,50" }}
           fill="none"
           stroke="url(#gradient)"
           strokeWidth="4"

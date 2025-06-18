@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
 
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -17,18 +18,33 @@ export default function ThemeToggle() {
     return <div className="w-9 h-9" />
   }
 
-  const themes = [
-    { value: 'light', icon: '☀️', label: 'Light' },
-    { value: 'dark', icon: '🌙', label: 'Dark' },
-    { value: 'system', icon: '💻', label: 'System' }
-  ]
-
-  const currentTheme = themes.find(t => t.value === theme) || themes[2]
-
   const cycleTheme = () => {
-    const currentIndex = themes.findIndex(t => t.value === theme)
-    const nextIndex = (currentIndex + 1) % themes.length
-    setTheme(themes[nextIndex].value)
+    const themeOrder = ['light', 'dark', 'system']
+    const currentIndex = themeOrder.indexOf(theme || 'system')
+    const nextIndex = (currentIndex + 1) % themeOrder.length
+    setTheme(themeOrder[nextIndex])
+  }
+
+  const getIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <SunIcon className="w-5 h-5 text-yellow-500" />
+      case 'dark':
+        return <MoonIcon className="w-5 h-5 text-blue-500" />
+      default:
+        return <ComputerDesktopIcon className="w-5 h-5 text-gray-500" />
+    }
+  }
+
+  const getNextThemeLabel = () => {
+    switch (theme) {
+      case 'light':
+        return 'dark'
+      case 'dark':
+        return 'system'
+      default:
+        return 'light'
+    }
   }
 
   return (
@@ -41,18 +57,17 @@ export default function ThemeToggle() {
         size="icon"
         onClick={cycleTheme}
         className="relative w-9 h-9 rounded-lg"
-        aria-label={`Switch to ${themes[(themes.findIndex(t => t.value === theme) + 1) % themes.length].label} theme`}
+        aria-label={`Switch to ${getNextThemeLabel()} theme`}
       >
-        <motion.span
+        <motion.div
           key={theme}
           initial={{ opacity: 0, rotate: -180 }}
           animate={{ opacity: 1, rotate: 0 }}
           exit={{ opacity: 0, rotate: 180 }}
           transition={{ duration: 0.3 }}
-          className="text-lg"
         >
-          {currentTheme.icon}
-        </motion.span>
+          {getIcon()}
+        </motion.div>
       </Button>
     </motion.div>
   )

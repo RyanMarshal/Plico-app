@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Supabase Realtime Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; padding: 2em; line-height: 1.6; background-color: #f4f4f9; color: #333; }
+        input, button { font-size: 1em; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { cursor: pointer; background-color: #2c7a7b; color: white; border: none; }
+        #log { white-space: pre-wrap; background-color: #fff; padding: 1em; border-radius: 5px; border: 1px solid #ddd; max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Realtime Connection Test</h1>
+    <p>This page will attempt to connect to your Supabase Realtime channel. It uses no React or Next.js.</p>
+    <div>
+        <label for="supabaseUrl">Supabase URL:</label><br>
+        <input type="text" id="supabaseUrl" size="60" placeholder="Enter your NEXT_PUBLIC_SUPABASE_URL" value="https://teguoodzbusvribqhmxw.supabase.co">
+    </div>
+    <div>
+        <label for="supabaseAnonKey">Supabase Anon Key:</label><br>
+        <input type="text" id="supabaseAnonKey" size="60" placeholder="Enter your NEXT_PUBLIC_SUPABASE_ANON_KEY" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlZ3Vvb2R6YnVzdnJpYnFobXh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwNDY5MjgsImV4cCI6MjA2NTYyMjkyOH0.Ca796PTuaHYjYo65JIGvpV_zKLVqL7IjkOp4KSfJnaU">
+    </div>
+     <div>
+        <label for="pollId">Poll ID:</label><br>
+        <input type="text" id="pollId" size="60" placeholder="Enter a valid Poll ID from your app">
+    </div>
+    <button id="connectBtn">Connect to Realtime Channel</button>
+    <hr>
+    <h2>Console Log:</h2>
+    <div id="log"></div>
+
+    <script>
+        const urlInput = document.getElementById('supabaseUrl');
+        const keyInput = document.getElementById('supabaseAnonKey');
+        const pollIdInput = document.getElementById('pollId');
+        const connectBtn = document.getElementById('connectBtn');
+        const logDiv = document.getElementById('log');
+
+        function log(message) {
+            console.log(message);
+            logDiv.innerHTML += message + '\n';
+        }
+
+        connectBtn.addEventListener('click', () => {
+            const SUPABASE_URL = urlInput.value;
+            const SUPABASE_KEY = keyInput.value;
+            const POLL_ID = pollIdInput.value;
+
+            if (!SUPABASE_URL || !SUPABASE_KEY || !POLL_ID) {
+                log('ERROR: Please fill in all fields.');
+                return;
+            }
+
+            log('--- Starting Test ---');
+            log(`Attempting to create Supabase client with URL: ${SUPABASE_URL.slice(0, 20)}...`);
+            
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            log('Client created.');
+
+            const channelName = `plico-results-${POLL_ID}`;
+            log(`Attempting to subscribe to channel: ${channelName}`);
+            
+            const channel = supabase.channel(channelName);
+
+            channel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'Option' }, (payload) => {
+                    log('✅ SUCCESS: Realtime message received!');
+                    log(JSON.stringify(payload, null, 2));
+                })
+                .subscribe((status, err) => {
+                    log(`Subscription status changed to: ${status}`);
+                    if (err) {
+                        log(`ERROR: ${err.message}`);
+                    }
+                    if (status === 'SUBSCRIBED') {
+                        log('✅ SUCCESS: Connection established!');
+                    } else if (status === 'CHANNEL_ERROR') {
+                        log('❌ FAILED: Channel error - check credentials and network');
+                    } else if (status === 'TIMED_OUT') {
+                        log('❌ FAILED: Connection timed out');
+                    } else if (status === 'CLOSED') {
+                        log('❌ FAILED: Connection closed');
+                    }
+                });
+        });
+    </script>
+</body>
+</html>
