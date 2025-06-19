@@ -1,10 +1,8 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(find:*)",
-      "Bash(npx create-next-app:*)",
-      "Bash(mkdir:*)"
-    ],
+    "allow": ["Bash(find:*)", "Bash(npx create-next-app:*)", "Bash(mkdir:*)"],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": ["supabase"],
+  "enableAllProjectMcpServers": true
 }

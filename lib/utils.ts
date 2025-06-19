@@ -1,8 +1,8 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /**
@@ -31,14 +31,16 @@ export const getSmartDefaultDays = (): string[] => {
   let potentialDays: string[];
 
   // 1. First, determine the context (work week vs. weekend planning).
-  if (todayIndex >= 0 && todayIndex <= 2) { // Sun, Mon, Tue
+  if (todayIndex >= 0 && todayIndex <= 2) {
+    // Sun, Mon, Tue
     potentialDays = weekdays;
-  } else { // Wed, Thu, Fri, Sat
+  } else {
+    // Wed, Thu, Fri, Sat
     potentialDays = weekend;
   }
 
   // 2. Filter out any days from the list that have already passed.
-  const upcomingDays = potentialDays.filter(day => {
+  const upcomingDays = potentialDays.filter((day) => {
     const dayIndex = dayMap[day];
     // Special handling for Sunday (0) when comparing with days later in the week
     if (todayIndex === 0) {
@@ -80,13 +82,15 @@ export const getSmartDefaultTimes = (): string[] => {
   ];
 
   // Filter for times that are at least one hour in the future.
-  const upcomingTimes = commonTimeSlots.filter(slot => slot.hour > currentHour);
+  const upcomingTimes = commonTimeSlots.filter(
+    (slot) => slot.hour > currentHour,
+  );
 
   // If we found at least 4 upcoming slots today, return the next 4.
   if (upcomingTimes.length >= 4) {
-    return upcomingTimes.slice(0, 4).map(slot => slot.label);
+    return upcomingTimes.slice(0, 4).map((slot) => slot.label);
   }
-  
+
   // If there are few or no slots left today, return a generic, useful default list.
   else {
     return ["12:00 PM", "3:00 PM", "6:00 PM", "8:00 PM"];

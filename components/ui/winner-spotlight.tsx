@@ -1,15 +1,18 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import { memo } from 'react'
+import { motion } from "framer-motion";
+import { memo } from "react";
 
 interface WinnerSpotlightProps {
-  winnerText: string
-  isVisible: boolean
+  winnerText: string;
+  isVisible: boolean;
 }
 
-const WinnerSpotlight = memo(function WinnerSpotlight({ winnerText, isVisible }: WinnerSpotlightProps) {
-  if (!isVisible) return null
+const WinnerSpotlight = memo(function WinnerSpotlight({
+  winnerText,
+  isVisible,
+}: WinnerSpotlightProps) {
+  if (!isVisible) return null;
 
   return (
     <motion.div
@@ -25,7 +28,7 @@ const WinnerSpotlight = memo(function WinnerSpotlight({ winnerText, isVisible }:
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
       />
-      
+
       {/* Rotating light rays */}
       <motion.div
         className="absolute inset-0"
@@ -42,14 +45,14 @@ const WinnerSpotlight = memo(function WinnerSpotlight({ winnerText, isVisible }:
           />
         ))}
       </motion.div>
-      
+
       {/* Sparkles - reduced for performance */}
       {[...Array(4)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute text-yellow-400"
           style={{
-            transform: `translate(${15 + (i % 2) * 70}%, ${20 + Math.floor(i / 2) * 60}%)`
+            transform: `translate(${15 + (i % 2) * 70}%, ${20 + Math.floor(i / 2) * 60}%)`,
           }}
           animate={{
             scale: [0, 1, 0],
@@ -66,7 +69,7 @@ const WinnerSpotlight = memo(function WinnerSpotlight({ winnerText, isVisible }:
           ✨
         </motion.div>
       ))}
-      
+
       {/* Pulsing glow border - using transform for better performance */}
       <div
         className="absolute inset-0 rounded-lg"
@@ -75,7 +78,7 @@ const WinnerSpotlight = memo(function WinnerSpotlight({ winnerText, isVisible }:
         }}
       />
     </motion.div>
-  )
-})
+  );
+});
 
-export default WinnerSpotlight
+export default WinnerSpotlight;

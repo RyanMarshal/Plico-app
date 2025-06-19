@@ -26,9 +26,15 @@ yarn-error.log*
 .env*.local
 .env
 
+# MCP configuration
+.mcp.json
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# development tools
+zen-mcp-server/

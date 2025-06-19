@@ -1,26 +1,26 @@
-'use client'
+"use client";
 
-import { useState, FormEvent, useEffect, useCallback, memo } from 'react'
-import { useRouter } from 'next/navigation'
-import { setCreatorCookie } from '@/lib/cookies'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { cn, getSmartDefaultDays, getSmartDefaultTimes } from '@/lib/utils'
-import { useSoundEffects } from '@/hooks/useSoundEffects'
-import { PlusCircleIcon } from '@heroicons/react/24/outline'
+import { useState, FormEvent, useEffect, useCallback, memo } from "react";
+import { useRouter } from "next/navigation";
+import { setCreatorCookie } from "@/lib/cookies";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { cn, getSmartDefaultDays, getSmartDefaultTimes } from "@/lib/utils";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { PlusCircleIcon } from "@heroicons/react/24/outline";
 
-const MAX_QUESTION_LENGTH = 280
-const MAX_OPTION_LENGTH = 80
-const MAX_OPTIONS = 4
+const MAX_QUESTION_LENGTH = 280;
+const MAX_OPTION_LENGTH = 80;
+const MAX_OPTIONS = 4;
 
 const TIMER_OPTIONS = [
-  { label: 'No Timer', value: 0 },
-  { label: '5 minutes', value: 5 },
-  { label: '15 minutes', value: 15 },
-  { label: '1 hour', value: 60 },
-  { label: '4 hours', value: 240 },
-  { label: '24 hours', value: 1440 }
-]
+  { label: "No Timer", value: 0 },
+  { label: "5 minutes", value: 5 },
+  { label: "15 minutes", value: 15 },
+  { label: "1 hour", value: 60 },
+  { label: "4 hours", value: 240 },
+  { label: "24 hours", value: 1440 },
+];
 
 const QUESTION_PLACEHOLDERS = [
   "What's the big decision?",
@@ -32,58 +32,58 @@ const QUESTION_PLACEHOLDERS = [
   "Help me choose:",
   "What should we do?",
   "Poll the room:",
-  "Democracy time!"
-]
+  "Democracy time!",
+];
 
 const QUICK_START_QUESTIONS = [
-  { 
-    text: "What should we eat tonight?", 
+  {
+    text: "What should we eat tonight?",
     emoji: "🍕",
     description: "The ultimate group decision",
-    suggestedOptions: ["Pizza", "Tacos", "Sushi", "Burgers"]
+    suggestedOptions: ["Pizza", "Tacos", "Sushi", "Burgers"],
   },
-  { 
-    text: "What day works best for everyone?", 
+  {
+    text: "What day works best for everyone?",
     emoji: "🗓️",
     description: "Schedule coordination made easy",
-    suggestedOptions: getSmartDefaultDays()
+    suggestedOptions: getSmartDefaultDays(),
   },
-  { 
-    text: "What should we do tonight?", 
+  {
+    text: "What should we do tonight?",
     emoji: "🎬",
     description: "Pick the perfect activity",
-    suggestedOptions: ["Movie night", "Game night", "Go out", "Stay in"]
+    suggestedOptions: ["Movie night", "Game night", "Go out", "Stay in"],
   },
-  { 
-    text: "What time should we meet?", 
+  {
+    text: "What time should we meet?",
     emoji: "⏰",
     description: "Nail down the timing",
-    suggestedOptions: getSmartDefaultTimes()
+    suggestedOptions: getSmartDefaultTimes(),
   },
-  { 
-    text: "Which option do you prefer?", 
+  {
+    text: "Which option do you prefer?",
     emoji: "🤔",
     description: "Quick A/B testing",
-    suggestedOptions: ["Option A", "Option B", "", ""]
-  }
-]
+    suggestedOptions: ["Option A", "Option B", "", ""],
+  },
+];
 
 // Memoized option component
-const PollOption = memo(function PollOption({ 
-  option, 
-  index, 
-  updateOption, 
-  removeOption, 
-  canRemove 
+const PollOption = memo(function PollOption({
+  option,
+  index,
+  updateOption,
+  removeOption,
+  canRemove,
 }: {
-  option: string
-  index: number
-  updateOption: (index: number, value: string) => void
-  removeOption: (index: number) => void
-  canRemove: boolean
+  option: string;
+  index: number;
+  updateOption: (index: number, value: string) => void;
+  removeOption: (index: number) => void;
+  canRemove: boolean;
 }) {
   return (
-    <motion.div 
+    <motion.div
       className="relative"
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -101,9 +101,12 @@ const PollOption = memo(function PollOption({
         required={index < 2}
       />
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-        <motion.span 
+        <motion.span
           className="text-sm"
-          animate={{ color: option.length > MAX_OPTION_LENGTH - 10 ? '#ef4444' : '#6b7280' }}
+          animate={{
+            color:
+              option.length > MAX_OPTION_LENGTH - 10 ? "#ef4444" : "#6b7280",
+          }}
         >
           {option.length}/{MAX_OPTION_LENGTH}
         </motion.span>
@@ -121,92 +124,95 @@ const PollOption = memo(function PollOption({
         )}
       </div>
     </motion.div>
-  )
-})
+  );
+});
 
 const PollCreator = memo(function PollCreator() {
-  const router = useRouter()
-  const [question, setQuestion] = useState('')
-  const [options, setOptions] = useState(['', ''])
-  const [duration, setDuration] = useState(0) // default to "No Timer"
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [placeholderIndex, setPlaceholderIndex] = useState(0)
-  const { playWhoosh } = useSoundEffects()
+  const router = useRouter();
+  const [question, setQuestion] = useState("");
+  const [options, setOptions] = useState(["", ""]);
+  const [duration, setDuration] = useState(0); // default to "No Timer"
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const { playWhoosh } = useSoundEffects();
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % QUESTION_PLACEHOLDERS.length)
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
+      setPlaceholderIndex((prev) => (prev + 1) % QUESTION_PLACEHOLDERS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const addOption = useCallback(() => {
     if (options.length < MAX_OPTIONS) {
-      setOptions([...options, ''])
+      setOptions([...options, ""]);
     }
-  }, [options])
+  }, [options]);
 
   const updateOption = useCallback((index: number, value: string) => {
-    setOptions(prev => {
-      const newOptions = [...prev]
-      newOptions[index] = value
-      return newOptions
-    })
-  }, [])
+    setOptions((prev) => {
+      const newOptions = [...prev];
+      newOptions[index] = value;
+      return newOptions;
+    });
+  }, []);
 
-  const removeOption = useCallback((index: number) => {
-    if (options.length > 2) {
-      setOptions(prev => prev.filter((_, i) => i !== index))
-    }
-  }, [options.length])
+  const removeOption = useCallback(
+    (index: number) => {
+      if (options.length > 2) {
+        setOptions((prev) => prev.filter((_, i) => i !== index));
+      }
+    },
+    [options.length],
+  );
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setIsSubmitting(true)
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
 
-    const filledOptions = options.filter(opt => opt.trim())
-    
+    const filledOptions = options.filter((opt) => opt.trim());
+
     if (filledOptions.length < 2) {
-      setError('Please provide at least 2 options')
-      setIsSubmitting(false)
-      return
+      setError("Please provide at least 2 options");
+      setIsSubmitting(false);
+      return;
     }
 
     try {
-      const response = await fetch('/api/plico', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/plico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: question.trim(),
           options: filledOptions,
-          duration: duration > 0 ? duration : undefined
-        })
-      })
+          duration: duration > 0 ? duration : undefined,
+        }),
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to create poll')
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create poll");
       }
 
-      const plico = await response.json()
-      
+      const plico = await response.json();
+
       // Set creator cookie
-      setCreatorCookie(plico.id, plico.creatorId)
-      
+      setCreatorCookie(plico.id, plico.creatorId);
+
       // Play sound and navigate
-      playWhoosh()
-      router.push(`/poll/${plico.id}/share`)
+      playWhoosh();
+      router.push(`/poll/${plico.id}/share`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-      setIsSubmitting(false)
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
-    <motion.form 
-      onSubmit={handleSubmit} 
+    <motion.form
+      onSubmit={handleSubmit}
       className="w-full max-w-2xl mx-auto space-y-8 p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -218,7 +224,10 @@ const PollCreator = memo(function PollCreator() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
       >
-        <label htmlFor="question" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200">
+        <label
+          htmlFor="question"
+          className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-200"
+        >
           Your Question
         </label>
         <div className="relative group">
@@ -232,9 +241,14 @@ const PollCreator = memo(function PollCreator() {
             maxLength={MAX_QUESTION_LENGTH}
             required
           />
-          <motion.div 
+          <motion.div
             className="absolute bottom-3 right-3 text-sm"
-            animate={{ color: question.length > MAX_QUESTION_LENGTH - 20 ? '#ef4444' : '#6b7280' }}
+            animate={{
+              color:
+                question.length > MAX_QUESTION_LENGTH - 20
+                  ? "#ef4444"
+                  : "#6b7280",
+            }}
           >
             {question.length}/{MAX_QUESTION_LENGTH}
           </motion.div>
@@ -248,14 +262,16 @@ const PollCreator = memo(function PollCreator() {
         transition={{ delay: 0.1 }}
         className="mb-6"
       >
-        <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">Quick start with a popular question:</h2>
+        <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3">
+          Quick start with a popular question:
+        </h2>
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           {QUICK_START_QUESTIONS.map((q, index) => (
             <motion.button
               key={index}
               type="button"
               onClick={() => {
-                setQuestion(q.text)
+                setQuestion(q.text);
                 // Always update options when selecting a quick-start question
                 // Recalculate smart defaults for time-sensitive questions
                 let options = q.suggestedOptions;
@@ -264,12 +280,12 @@ const PollCreator = memo(function PollCreator() {
                 } else if (q.text === "What time should we meet?") {
                   options = getSmartDefaultTimes();
                 }
-                setOptions(options.slice(0, 4))
+                setOptions(options.slice(0, 4));
               }}
               className={`group flex items-center gap-2 px-4 py-3 min-h-[44px] border-2 rounded-full transition-all whitespace-nowrap active:scale-95 ${
-                question === q.text 
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-transparent text-white' 
-                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-gray-700'
+                question === q.text
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 border-transparent text-white"
+                  : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-gray-700"
               }`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -278,9 +294,13 @@ const PollCreator = memo(function PollCreator() {
               whileTap={{ scale: 0.95 }}
             >
               <span className="text-lg">{q.emoji}</span>
-              <span className={`font-medium ${
-                question === q.text ? 'text-white' : 'text-gray-700 dark:text-gray-200'
-              }`}>
+              <span
+                className={`font-medium ${
+                  question === q.text
+                    ? "text-white"
+                    : "text-gray-700 dark:text-gray-200"
+                }`}
+              >
                 {q.text}
               </span>
             </motion.button>
@@ -288,13 +308,15 @@ const PollCreator = memo(function PollCreator() {
         </div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         className="space-y-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Options</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+          Options
+        </label>
         <AnimatePresence mode="sync">
           {options.map((option, index) => (
             <PollOption
@@ -307,7 +329,7 @@ const PollCreator = memo(function PollCreator() {
             />
           ))}
         </AnimatePresence>
-        
+
         {options.length < MAX_OPTIONS && (
           <motion.button
             type="button"
@@ -322,14 +344,18 @@ const PollCreator = memo(function PollCreator() {
         )}
       </motion.div>
 
-      <motion.div 
+      <motion.div
         className="space-y-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Poll Timer (Optional)</label>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Set a countdown timer to create urgency</p>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+          Poll Timer (Optional)
+        </label>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Set a countdown timer to create urgency
+        </p>
         <div className="grid grid-cols-3 gap-2">
           {TIMER_OPTIONS.map((option) => (
             <motion.button
@@ -339,8 +365,8 @@ const PollCreator = memo(function PollCreator() {
               className={cn(
                 "py-3 px-4 rounded-xl font-medium transition-all",
                 duration === option.value
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                  : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md'
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg"
+                  : "bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md",
               )}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -353,7 +379,7 @@ const PollCreator = memo(function PollCreator() {
 
       <AnimatePresence>
         {error && (
-          <motion.div 
+          <motion.div
             className="bg-red-50/80 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -375,11 +401,11 @@ const PollCreator = memo(function PollCreator() {
           className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-6 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           size="lg"
         >
-          {isSubmitting ? 'Creating your poll...' : 'Create Poll 🚀'}
+          {isSubmitting ? "Creating your poll..." : "Create Poll 🚀"}
         </Button>
       </motion.div>
     </motion.form>
-  )
-})
+  );
+});
 
-export default PollCreator
+export default PollCreator;
