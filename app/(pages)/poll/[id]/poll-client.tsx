@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { PlicoWithResults } from '@/lib/types'
 import { hasVoted, getCreatorId } from '@/lib/cookies'
 import PollView from '@/components/plico/PollView'
-import PollResults from '@/components/plico/PollResults'
+import PollResultsHybrid from '@/components/plico/PollResultsHybrid'
 import { motion } from 'framer-motion'
 import { MorphLoader } from '@/components/ui/plico-loader'
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon'
@@ -63,7 +63,7 @@ function PollPageClient() {
       setShowResults(true)
     }
     fetchPoll()
-  }, [pollId, fetchPoll])
+  }, [pollId]) // Remove fetchPoll from dependencies to prevent loops
 
   // Reset justVoted flag after a delay
   useEffect(() => {
@@ -75,7 +75,7 @@ function PollPageClient() {
     }
   }, [justVoted])
 
-  const handleVoteComplete = (votedOptionId: string, rollback?: boolean) => {
+  const handleVoteComplete = useCallback((votedOptionId: string, rollback?: boolean) => {
     if (rollback) {
       // Rollback the optimistic update
       fetchPoll()
@@ -100,17 +100,25 @@ function PollPageClient() {
           voteCount: option.id === votedOptionId ? option.voteCount + 1 : option.voteCount
         }))
         
-        return {
+        const updatedPoll = {
           ...prevPoll,
           options: updatedOptions,
           totalVotes: prevPoll.totalVotes + 1
         }
+        
+        console.log('[Poll Client] Optimistic update:', 
+          'votedOption:', votedOptionId,
+          'newTotalVotes:', updatedPoll.totalVotes,
+          'options:', updatedPoll.options.map(o => `${o.text}: ${o.voteCount}`)
+        )
+        
+        return updatedPoll
       })
     }
     
     setJustVoted(true)
     setShowResults(true)
-  }
+  }, [poll, fetchPoll])
 
   const handleFinalize = async () => {
     if (!poll || !isCreator) return
@@ -203,7 +211,7 @@ function PollPageClient() {
         transition={{ duration: 0.5 }}
       >
         {showResults ? (
-          <PollResults 
+          <PollResultsHybrid 
             poll={poll} 
             isCreator={isCreator}
             onFinalize={handleFinalize}
