@@ -5,6 +5,13 @@ import { PlicoWithResults } from '@/lib/types';
 import { useRealtimeSubscription } from '@/lib/supabase/realtime-manager';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import CountdownTimer from './CountdownTimer';
+import dynamic from 'next/dynamic';
+
+const TieBreakerWheel = dynamic(() => import('@/components/ui/tie-breaker-wheel'), {
+  ssr: false,
+  loading: () => null
+});
 
 interface ResultsViewProps {
   poll: PlicoWithResults
@@ -25,9 +32,11 @@ export default function PollResultsEnhanced({
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   const [showUpdateAnimation, setShowUpdateAnimation] = useState(false);
+  const [showTieBreaker, setShowTieBreaker] = useState(false);
+  const [hasShownTieBreaker, setHasShownTieBreaker] = useState(false);
 
-  // Configure real-time subscription
-  const subscriptionConfig = poll ? {
+  // Configure real-time subscription for vote updates
+  const voteSubscriptionConfig = poll ? {
     channelName: `plico-results-enhanced-${poll.id}`,
     table: 'Option',
     event: 'UPDATE' as const,
@@ -81,12 +90,57 @@ export default function PollResultsEnhanced({
     }
   } : null;
 
-  useRealtimeSubscription(subscriptionConfig);
+  // Configure real-time subscription for poll finalization
+  const pollSubscriptionConfig = poll ? {
+    channelName: `plico-status-enhanced-${poll.id}`,
+    table: 'Plico',
+    event: 'UPDATE' as const,
+    filter: `id=eq.${poll.id}`,
+    onMessage: async (payload: any) => {
+      console.log('✅ Realtime Poll Update:', payload.new);
+      
+      // If poll was finalized, fetch full data including winner calculations
+      if (payload.new.finalized || payload.new.tieBreakWinnerId) {
+        // Fetch the latest poll data with winner calculations
+        try {
+          const response = await fetch(`/api/plico/${poll.id}`);
+          if (response.ok) {
+            const updatedPoll = await response.json();
+            setPoll(updatedPoll);
+            setLastUpdateTime(new Date());
+            
+            // Show confetti for finalization
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+          }
+        } catch (error) {
+          console.error('[PollResultsEnhanced] Error fetching updated poll:', error);
+        }
+      }
+    },
+    onError: (error: Error) => {
+      console.error('[PollResultsEnhanced] Poll subscription error:', error);
+    }
+  } : null;
+
+  useRealtimeSubscription(voteSubscriptionConfig);
+  useRealtimeSubscription(pollSubscriptionConfig);
 
   // Update local state when initialPoll changes (for optimistic updates)
   useEffect(() => {
     setPoll(initialPoll);
   }, [initialPoll]);
+
+  // Check if we should show tie-breaker animation
+  useEffect(() => {
+    if (poll.isClosed && poll.isTie && poll.winner && !hasShownTieBreaker) {
+      setShowTieBreaker(true);
+      setHasShownTieBreaker(true);
+    }
+  }, [poll.isClosed, poll.isTie, poll.winner, hasShownTieBreaker]);
 
   if (!poll) {
     return <div>Loading...</div>;
@@ -104,6 +158,16 @@ export default function PollResultsEnhanced({
       >
         {poll.question}
       </motion.h2>
+
+      {/* Countdown Timer */}
+      {poll.closesAt && !poll.isClosed && (
+        <div className="mb-6">
+          <CountdownTimer 
+            closesAt={new Date(poll.closesAt)} 
+            onExpire={onTimerExpire}
+          />
+        </div>
+      )}
 
       {/* Connection Status */}
       <AnimatePresence>
@@ -138,19 +202,52 @@ export default function PollResultsEnhanced({
         {poll.options.map((option, index) => {
           const percentage = totalVotes > 0 ? (option.voteCount / totalVotes) * 100 : 0;
           const isWinning = option.voteCount === maxVotes && option.voteCount > 0;
+          // Show crown for the winner (including tie-break winner) when poll is closed
+          const showCrown = poll.isClosed && ((poll.winner && poll.winner.id === option.id) || (isWinning && !poll.isTie));
           
           return (
             <motion.div 
               key={option.id} 
-              className="relative"
+              className={`relative ${
+                showCrown 
+                  ? 'ring-2 ring-green-400 dark:ring-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 shadow-lg shadow-green-200/50 dark:shadow-green-900/50 transform' 
+                  : ''
+              }`}
               initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
+              animate={{ 
+                opacity: 1, 
+                x: 0,
+                scale: showCrown ? [1, 1.02, 1] : 1
+              }}
+              transition={{ 
+                delay: index * 0.1,
+                scale: {
+                  delay: 0.5,
+                  duration: 0.5
+                }
+              }}
             >
+              {/* Winner Badge */}
+              {showCrown && (
+                <motion.div
+                  className="absolute -top-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-3 py-1 rounded-full shadow-lg font-bold uppercase tracking-wider"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ 
+                    type: "spring",
+                    damping: 10,
+                    stiffness: 100,
+                    delay: 0.6
+                  }}
+                >
+                  Winner
+                </motion.div>
+              )}
+              
               <div className="flex justify-between items-center mb-2">
                 <span className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
                   {option.text}
-                  {isWinning && totalVotes > 0 && (
+                  {showCrown && totalVotes > 0 && (
                     <motion.span
                       className="ml-2 text-2xl"
                       animate={{ rotate: [0, 10, -10, 0] }}
@@ -171,9 +268,11 @@ export default function PollResultsEnhanced({
               <div className="relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-10 overflow-hidden shadow-inner">
                 <motion.div
                   className={`absolute top-0 left-0 h-full rounded-full ${
-                    isWinning 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
-                      : 'bg-gradient-to-r from-purple-400 to-pink-400'
+                    showCrown
+                      ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-400/50' 
+                      : isWinning 
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+                        : 'bg-gradient-to-r from-purple-400 to-pink-400'
                   } shadow-lg`}
                   initial={{ width: 0 }}
                   animate={{ width: `${percentage}%` }}
@@ -256,6 +355,18 @@ export default function PollResultsEnhanced({
           </p>
         </motion.div>
       )}
+
+      {/* Tie-breaker wheel */}
+      <TieBreakerWheel
+        options={poll.options.map(opt => ({
+          id: opt.id,
+          text: opt.text,
+          color: `hsl(${Math.random() * 360}, 70%, 50%)`
+        }))}
+        winnerId={poll.winner?.id || ''}
+        isVisible={showTieBreaker}
+        onComplete={() => setShowTieBreaker(false)}
+      />
     </div>
   );
 }
