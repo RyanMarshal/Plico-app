@@ -73,7 +73,7 @@ export async function POST(
         })
         .eq("id", body.optionId);
 
-      console.log("Real-time trigger sent for option:", body.optionId);
+      // Real-time trigger sent successfully
     } catch (realtimeError) {
       // Log but don't fail the request if real-time trigger fails
       console.error("Failed to trigger real-time update:", realtimeError);
