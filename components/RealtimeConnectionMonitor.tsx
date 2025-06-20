@@ -19,6 +19,11 @@ export function RealtimeConnectionMonitor() {
     error: null,
   });
   const [isMinimized, setIsMinimized] = useState(true);
+  
+  // Only show in development
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();

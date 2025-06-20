@@ -7,6 +7,9 @@ export async function GET(
 ) {
   const { db } = await import("@/lib/db");
   try {
+    // Check if user has admin cookie for this poll
+    const adminCookie = request.cookies.get(`plico_admin_${params.id}`);
+    const isAdmin = !!adminCookie;
     const plico = await db.plico.findUnique({
       where: { id: params.id },
       include: {
@@ -59,12 +62,23 @@ export async function GET(
       }
     }
 
+    // Verify admin status if cookie is present
+    let verifiedAdmin = false;
+    if (adminCookie && plico.creatorId) {
+      verifiedAdmin = adminCookie.value === plico.creatorId;
+    }
+
+    // Remove sensitive fields from the response
+    const { creatorId: _, ...plicoWithoutCreatorId } = plico;
+    
     const result: PlicoWithResults = {
-      ...plico,
+      ...plicoWithoutCreatorId,
+      creatorId: null, // Hide the actual creatorId
       totalVotes,
       winner,
       isTie,
       isClosed,
+      isCreator: verifiedAdmin, // Add creator status to response
     };
 
     // Add cache headers for better performance

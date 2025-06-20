@@ -7,17 +7,17 @@ export async function POST(
   // Dynamic import to avoid build-time evaluation
   const { db } = await import("@/lib/db");
   try {
-    const body = await request.json();
-    const { creatorId } = body;
-
-    if (!creatorId) {
+    // Get admin cookie for this poll
+    const adminCookie = request.cookies.get(`plico_admin_${params.id}`);
+    
+    if (!adminCookie) {
       return NextResponse.json(
-        { error: "Creator ID is required" },
-        { status: 401 },
+        { error: "Only the poll creator can finalize results" },
+        { status: 403 },
       );
     }
 
-    // Find the poll and verify creator
+    // Find the poll and verify admin key
     const poll = await db.plico.findUnique({
       where: { id: params.id },
     });
@@ -26,8 +26,8 @@ export async function POST(
       return NextResponse.json({ error: "Poll not found" }, { status: 404 });
     }
 
-    // For old polls without creatorId, allow any user to finalize
-    if (poll.creatorId && poll.creatorId !== creatorId) {
+    // Verify the admin key matches (using creatorId for now)
+    if (!poll.creatorId || poll.creatorId !== adminCookie.value) {
       return NextResponse.json(
         { error: "Only the poll creator can finalize results" },
         { status: 403 },
@@ -63,9 +63,11 @@ export async function POST(
 
     let tieBreakWinnerId = undefined;
     if (winners.length > 1) {
-      // Multiple winners - select one randomly for tie-breaker
-      const randomIndex = Math.floor(Math.random() * winners.length);
-      tieBreakWinnerId = winners[randomIndex].id;
+      // Multiple winners - use deterministic selection based on poll ID
+      const sortedWinners = winners.sort((a, b) => a.id.localeCompare(b.id));
+      const seed = poll.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const selectedIndex = seed % sortedWinners.length;
+      tieBreakWinnerId = sortedWinners[selectedIndex].id;
     }
 
     // Update poll to finalized

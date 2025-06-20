@@ -296,6 +296,21 @@ export default function SharePage() {
                 text={`Vote on my poll: "${poll.question}"`}
               />
             </motion.div>
+
+            {/* Creator Control Tip */}
+            <motion.div
+              className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <p className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                <span className="text-lg">🔑</span>
+                <span>
+                  Keep this browser tab open to maintain creator controls for your poll
+                </span>
+              </p>
+            </motion.div>
           </motion.div>
 
           {/* Poll Details Section */}

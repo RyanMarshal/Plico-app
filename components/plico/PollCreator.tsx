@@ -2,7 +2,6 @@
 
 import { useState, FormEvent, useEffect, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
-import { setCreatorCookie } from "@/lib/cookies";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn, getSmartDefaultDays, getSmartDefaultTimes } from "@/lib/utils";
@@ -198,8 +197,8 @@ const PollCreator = memo(function PollCreator() {
 
       const plico = await response.json();
 
-      // Set creator cookie
-      setCreatorCookie(plico.id, plico.creatorId);
+      // Admin key is now automatically set as HTTP-only cookie by the API
+      // No need to manually handle creator cookies
 
       // Play sound and navigate
       playWhoosh();

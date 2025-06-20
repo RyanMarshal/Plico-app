@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CreatePlicoRequest } from "@/lib/types";
 import { createPollSchema } from "@/lib/validations";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 
 export async function POST(request: NextRequest) {
   const { db } = await import("@/lib/db");
@@ -29,9 +30,13 @@ export async function POST(request: NextRequest) {
       closesAt.setMinutes(closesAt.getMinutes() + validatedData.duration);
     }
 
+    // Generate a secure admin key (shorter for Safari compatibility)
+    const adminKey = randomBytes(16).toString('hex');
+
     const plico = await db.plico.create({
       data: {
         question: validatedData.question,
+        creatorId: adminKey, // Use creatorId field for now
         closesAt,
         options: {
           create: validatedData.options.map((text, index) => ({
@@ -46,16 +51,39 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(plico, { status: 201 });
+    // Create response with poll data (hiding the creatorId which now contains admin key)
+    const publicPoll = {
+      ...plico,
+      creatorId: null // Hide the admin key
+    };
+    
+    // Create response and set admin key in a secure HTTP-only cookie
+    const response = NextResponse.json(publicPoll, { status: 201 });
+    
+    // Set admin key as a secure cookie for this specific poll
+    response.cookies.set(`plico_admin_${plico.id}`, adminKey, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days (reduced for Safari)
+      path: '/'
+    });
+    
+    return response;
   } catch (error) {
+    console.error("Error creating poll:", error);
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input", details: error.errors },
         { status: 400 },
       );
     }
+    
+    // Return more detailed error in development
+    const errorMessage = error instanceof Error ? error.message : "Failed to create plico";
     return NextResponse.json(
-      { error: "Failed to create plico" },
+      { error: errorMessage },
       { status: 500 },
     );
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, memo } from "react";
 import { useParams } from "next/navigation";
 import { PlicoWithResults } from "@/lib/types";
-import { hasVoted, getCreatorId } from "@/lib/cookies";
+import { hasVoted } from "@/lib/cookies";
 import PollView from "@/components/plico/PollView";
 import PollResultsHybrid from "@/components/plico/PollResultsHybrid";
 import { motion } from "framer-motion";
@@ -43,9 +43,8 @@ function PollPageClient() {
       const data = await response.json();
       setPoll(data);
 
-      // Check if current user is the creator
-      const creatorId = getCreatorId(pollId);
-      setIsCreator(data.creatorId ? creatorId === data.creatorId : false);
+      // Use isCreator flag from API response
+      setIsCreator(data.isCreator || false);
 
       // If poll is closed and user hasn't voted, show results
       if (data.isClosed && !hasVoted(pollId)) {
@@ -126,11 +125,10 @@ function PollPageClient() {
     if (!poll || !isCreator) return;
 
     try {
-      const creatorId = getCreatorId(pollId);
       const response = await fetch(`/api/plico/${pollId}/finalize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ creatorId }),
+        body: JSON.stringify({}), // No need to send anything, cookie handles auth
       });
 
       if (!response.ok) {

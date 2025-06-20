@@ -6,6 +6,7 @@ export interface Plico {
   finalized: boolean;
   finalizedAt: Date | null;
   closesAt: Date | null;
+  tieBreakWinnerId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,4 +35,5 @@ export interface PlicoWithResults extends Plico {
   winner?: Option;
   isTie: boolean;
   isClosed: boolean; // true if closesAt has passed or finalized is true
+  isCreator?: boolean; // true if the current user is the poll creator
 }
