@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 
 export async function POST(
   request: NextRequest,
@@ -26,8 +27,8 @@ export async function POST(
       return NextResponse.json({ error: "Poll not found" }, { status: 404 });
     }
 
-    // Verify the admin key matches (using creatorId for now)
-    if (!poll.creatorId || poll.creatorId !== adminCookie.value) {
+    // Verify the admin key matches the hashed version
+    if (!poll.creatorId || !(await bcrypt.compare(adminCookie.value, poll.creatorId))) {
       return NextResponse.json(
         { error: "Only the poll creator can finalize results" },
         { status: 403 },

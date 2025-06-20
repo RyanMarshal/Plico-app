@@ -60,7 +60,7 @@ export function RealtimeManagerProvider({
   });
 
   const channelsRef = useRef<
-    Map<string, { channel: RealtimeChannel; config: ChannelConfig }>
+    Map<string, { channel: RealtimeChannel; config: ChannelConfig; refCount: number }>
   >(new Map());
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isRetryingRef = useRef<Set<string>>(new Set());
@@ -199,8 +199,8 @@ export function RealtimeManagerProvider({
           }
         });
 
-        // Store channel reference
-        channelsRef.current.set(config.channelName, { channel, config });
+        // Store channel reference with initial ref count
+        channelsRef.current.set(config.channelName, { channel, config, refCount: 1 });
 
         return channel;
       } catch (error) {
@@ -218,13 +218,24 @@ export function RealtimeManagerProvider({
       // Check if channel already exists
       const existing = channelsRef.current.get(config.channelName);
       if (existing) {
-        // Reusing existing channel
-        // Return a no-op cleanup since we're reusing the channel
-        // In a production app, you'd want reference counting here
+        // Increment reference count for existing channel
+        existing.refCount++;
+        // Return cleanup function that decrements ref count
         return () => {
-          // Cleanup called for shared channel
-          // Don't remove the channel here as other components might be using it
-          // Implement reference counting for production use
+          const entry = channelsRef.current.get(config.channelName);
+          if (entry) {
+            entry.refCount--;
+            // Only remove channel when no more references
+            if (entry.refCount <= 0) {
+              try {
+                supabase.removeChannel(entry.channel);
+              } catch (e) {
+                console.warn("[RealtimeManager] Error removing channel:", e);
+              }
+              channelsRef.current.delete(config.channelName);
+              isRetryingRef.current.delete(config.channelName);
+            }
+          }
         };
       }
 
@@ -235,15 +246,18 @@ export function RealtimeManagerProvider({
       return () => {
         const entry = channelsRef.current.get(config.channelName);
         if (entry) {
-          // Cleaning up channel
-          try {
-            supabase.removeChannel(entry.channel);
-          } catch (e) {
-            console.warn("[RealtimeManager] Error removing channel:", e);
+          entry.refCount--;
+          // Only remove channel when no more references
+          if (entry.refCount <= 0) {
+            try {
+              supabase.removeChannel(entry.channel);
+            } catch (e) {
+              console.warn("[RealtimeManager] Error removing channel:", e);
+            }
+            channelsRef.current.delete(config.channelName);
+            isRetryingRef.current.delete(config.channelName);
           }
-          channelsRef.current.delete(config.channelName);
         }
-        isRetryingRef.current.delete(config.channelName);
       };
     },
     [createSubscription],

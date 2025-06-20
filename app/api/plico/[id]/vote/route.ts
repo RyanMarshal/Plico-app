@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { VoteRequest } from "@/lib/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
 
 export async function POST(
   request: NextRequest,
@@ -9,6 +10,29 @@ export async function POST(
   const { db } = await import("@/lib/db");
 
   try {
+    // Check rate limit
+    const clientIp = getClientIp(request);
+    const rateLimitKey = `vote:${params.id}:${clientIp}`;
+    const { allowed, remaining, resetAt } = checkRateLimit(rateLimitKey, 5, 60 * 1000); // 5 votes per minute per IP per poll
+    
+    if (!allowed) {
+      return NextResponse.json(
+        { 
+          error: "Too many votes. Please try again later.",
+          retryAfter: Math.ceil((resetAt - Date.now()) / 1000)
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '5',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': new Date(resetAt).toISOString(),
+            'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000))
+          }
+        },
+      );
+    }
+
     const body: VoteRequest = await request.json();
 
     if (!body.optionId) {
@@ -82,6 +106,12 @@ export async function POST(
     return NextResponse.json({
       success: true,
       voteCount: updatedOption.voteCount,
+    }, {
+      headers: {
+        'X-RateLimit-Limit': '5',
+        'X-RateLimit-Remaining': String(remaining),
+        'X-RateLimit-Reset': new Date(resetAt).toISOString()
+      }
     });
   } catch (error) {
     console.error("Vote error:", error);

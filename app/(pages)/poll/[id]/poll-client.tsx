@@ -62,7 +62,7 @@ function PollPageClient() {
       setShowResults(true);
     }
     fetchPoll();
-  }, [pollId]); // Remove fetchPoll from dependencies to prevent loops
+  }, [pollId, fetchPoll]);
 
   // Reset justVoted flag after a delay
   useEffect(() => {

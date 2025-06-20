@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PlicoWithResults } from "@/lib/types";
+import bcrypt from "bcryptjs";
 
 export async function GET(
   request: NextRequest,
@@ -65,7 +66,12 @@ export async function GET(
     // Verify admin status if cookie is present
     let verifiedAdmin = false;
     if (adminCookie && plico.creatorId) {
-      verifiedAdmin = adminCookie.value === plico.creatorId;
+      try {
+        verifiedAdmin = await bcrypt.compare(adminCookie.value, plico.creatorId);
+      } catch (error) {
+        console.error("Error verifying admin status:", error);
+        verifiedAdmin = false;
+      }
     }
 
     // Remove sensitive fields from the response

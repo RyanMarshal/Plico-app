@@ -3,6 +3,7 @@ import { CreatePlicoRequest } from "@/lib/types";
 import { createPollSchema } from "@/lib/validations";
 import { z } from "zod";
 import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   const { db } = await import("@/lib/db");
@@ -32,11 +33,14 @@ export async function POST(request: NextRequest) {
 
     // Generate a secure admin key (shorter for Safari compatibility)
     const adminKey = randomBytes(16).toString('hex');
+    
+    // Hash the admin key before storing
+    const hashedAdminKey = await bcrypt.hash(adminKey, 10);
 
     const plico = await db.plico.create({
       data: {
         question: validatedData.question,
-        creatorId: adminKey, // Use creatorId field for now
+        creatorId: hashedAdminKey, // Store hashed version
         closesAt,
         options: {
           create: validatedData.options.map((text, index) => ({

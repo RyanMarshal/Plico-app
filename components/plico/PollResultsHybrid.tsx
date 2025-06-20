@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { PlicoWithResults } from "@/lib/types";
 import { useRealtimeSubscription } from "@/lib/supabase/realtime-manager";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
 import CountdownTimer from "./CountdownTimer";
 import dynamic from "next/dynamic";
 
@@ -15,6 +14,17 @@ const TieBreakerWheel = dynamic(
     loading: () => null,
   },
 );
+
+// Lazy load confetti for better performance
+let confettiPromise: Promise<any> | null = null;
+const launchConfetti = async (options: any) => {
+  if (!confettiPromise) {
+    confettiPromise = import("canvas-confetti");
+  }
+  const confettiModule = await confettiPromise;
+  const confetti = confettiModule.default;
+  confetti(options);
+};
 
 interface ResultsViewProps {
   poll: PlicoWithResults;
@@ -132,7 +142,7 @@ export default function PollResultsHybrid({
           const newVoteCount = payload.new.voteCount;
           if (newVoteCount % 10 === 0 && newVoteCount > 0) {
             // Fire confetti for every 10 votes
-            confetti({
+            launchConfetti({
               particleCount: 50,
               spread: 60,
               origin: { y: 0.8 },
@@ -182,7 +192,7 @@ export default function PollResultsHybrid({
             await fetchLatestResults();
 
             // Show confetti for finalization
-            confetti({
+            launchConfetti({
               particleCount: 100,
               spread: 70,
               origin: { y: 0.6 },
