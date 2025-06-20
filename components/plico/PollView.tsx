@@ -53,7 +53,7 @@ const PollView = memo(function PollView({
       setVotedCookie(poll.id);
 
       try {
-        const response = await fetch(`/api/plico/${poll.id}/vote-hybrid`, {
+        const response = await fetch(`/api/plico/${poll.id}/vote`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ optionId }),

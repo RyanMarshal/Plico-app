@@ -10,7 +10,21 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Poll page error occurred
+    // Log error to console in development
+    console.error('Poll page error:', error);
+    
+    // In production, you could send this to an error tracking service
+    if (process.env.NODE_ENV === 'production') {
+      // Example: Send to error tracking service
+      // logErrorToService({
+      //   message: error.message,
+      //   stack: error.stack,
+      //   digest: error.digest,
+      //   page: 'poll',
+      //   url: window.location.href,
+      //   timestamp: new Date().toISOString(),
+      // });
+    }
   }, [error]);
 
   return (
