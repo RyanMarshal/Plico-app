@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { PlicoWithResults } from "@/lib/types";
 import { useRealtimeSubscription } from "@/lib/supabase/realtime-manager";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -41,17 +41,26 @@ export default function PollResultsHybrid({
   const revealWinnerTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showTieBreaker, setShowTieBreaker] = useState(false);
   const [hasShownTieBreaker, setHasShownTieBreaker] = useState(false);
-  const [tieBreakerVariant] = useState<"cards" | "slot" | "versus" | "quantum">(
-    () => {
-      const variants = ["cards", "slot", "versus", "quantum"] as const;
-      return variants[Math.floor(Math.random() * variants.length)];
-    },
-  );
+  // Use poll ID to deterministically select the same variant for all clients
+  const tieBreakerVariant = useMemo<"cards" | "slot" | "versus" | "quantum">(() => {
+    const variants = ["cards", "slot", "versus", "quantum"] as const;
+    // Create a simple hash from the poll ID
+    let hash = 0;
+    for (let i = 0; i < poll.id.length; i++) {
+      const char = poll.id.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    // Use absolute value to ensure positive index
+    const index = Math.abs(hash) % variants.length;
+    return variants[index];
+  }, [poll.id]);
   const [showBlackScreen, setShowBlackScreen] = useState(false);
   const [hideContent, setHideContent] = useState(false);
   const [revealWinner, setRevealWinner] = useState(false);
   const [showWinnerText, setShowWinnerText] = useState(false);
   const [showDots, setShowDots] = useState(false);
+  const [hasStartedAnimation, setHasStartedAnimation] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
   // Cleanup effect for showUpdateAnimation
@@ -122,19 +131,22 @@ export default function PollResultsHybrid({
           }
 
           setPoll((currentPoll) => {
-            if (!currentPoll) return currentPoll;
-
-            const newOptions = currentPoll.options.map((opt) =>
-              opt.id === payload.new.id
-                ? { ...opt, voteCount: payload.new.voteCount }
-                : opt,
-            );
+            if (!currentPoll) {
+              return currentPoll;
+            }
+            const newOptions = currentPoll.options.map((opt) => {
+              if (opt.id === payload.new.id) {
+                return { ...opt, voteCount: payload.new.voteCount };
+              }
+              return opt;
+            });
 
             // Recalculate total votes
             const newTotalVotes = newOptions.reduce(
               (acc, opt) => acc + opt.voteCount,
               0,
             );
+
 
             // Trigger update animation
             setShowUpdateAnimation(true);
@@ -188,52 +200,59 @@ export default function PollResultsHybrid({
         onMessage: async (payload: any) => {
           // Realtime poll update received
 
-          // If poll was finalized, fetch full data including winner calculations
+          // CRITICAL: When ANY finalization update is detected, ALL clients must fetch
+          // the authoritative data from the API to ensure consistency
           if (payload.new.finalized || payload.new.tieBreakWinnerId) {
-            // First fetch the latest results
-            const response = await fetch(`/api/plico/${poll.id}`);
-            if (response.ok) {
-              const updatedPoll = await response.json();
-              
-              // Check if it's a tie before updating state
-              if (!updatedPoll.isTie) {
-                // Only show black screen if NOT a tie
-                setRevealWinner(false);
-                setHideContent(true);
-                setShowBlackScreen(true);
+            
+            // Fetch the complete, authoritative poll data from the API
+            // This ensures all clients have the same data, including computed winner
+            try {
+              const response = await fetch(`/api/plico/${poll.id}`);
+              if (response.ok) {
+                const updatedPoll = await response.json();
+                
+                // Update the poll state with authoritative data
+                setPoll(updatedPoll);
+                
+                // Handle different finalization scenarios
+                if (updatedPoll.tieBreakWinnerId && updatedPoll.winner && updatedPoll.isTie) {
+                  // The useEffect will detect this state change and trigger the animation
+                } else if (!updatedPoll.isTie && updatedPoll.finalized && !hasStartedAnimation) {
+                  // Non-tie finalization - show black screen animation
+                  setHasStartedAnimation(true);
+                  setRevealWinner(false);
+                  setHideContent(true);
+                  setShowBlackScreen(true);
 
-                // Clear any existing timers
-                if (winnerTextTimerRef.current)
-                  clearTimeout(winnerTextTimerRef.current);
-                if (revealWinnerTimerRef.current)
-                  clearTimeout(revealWinnerTimerRef.current);
+                  // Clear any existing timers
+                  if (winnerTextTimerRef.current)
+                    clearTimeout(winnerTextTimerRef.current);
+                  if (revealWinnerTimerRef.current)
+                    clearTimeout(revealWinnerTimerRef.current);
 
-                // Show "And the winner is..." text after delay
-                winnerTextTimerRef.current = setTimeout(
-                  () => setShowWinnerText(true),
-                  1000,
-                );
+                  // Show "And the winner is..." text after delay
+                  winnerTextTimerRef.current = setTimeout(
+                    () => setShowWinnerText(true),
+                    1000,
+                  );
 
-                // After showing the text, transition to dots
-                setTimeout(() => {
-                  setShowWinnerText(false);
-                  setShowDots(true);
-                }, 3500);
+                  // After showing the text, transition to dots
+                  setTimeout(() => {
+                    setShowWinnerText(false);
+                    setShowDots(true);
+                  }, 3500);
 
-                // Hide everything and reveal winner after dots
-                revealWinnerTimerRef.current = setTimeout(() => {
-                  setShowBlackScreen(false);
-                  setShowDots(false);
-                  setHideContent(false);
-                  setRevealWinner(true);
-                }, 5000);
-              } else {
-                // For ties, don't reveal winner yet - wait for tie-breaker animation to complete
-                setRevealWinner(false);
+                  // Hide everything and reveal winner after dots
+                  revealWinnerTimerRef.current = setTimeout(() => {
+                    setShowBlackScreen(false);
+                    setShowDots(false);
+                    setHideContent(false);
+                    setRevealWinner(true);
+                  }, 5000);
+                }
               }
-              
-              // Now update the poll state
-              setPoll(updatedPoll);
+            } catch (error) {
+              // Error fetching poll data
             }
           }
         },
@@ -249,24 +268,60 @@ export default function PollResultsHybrid({
   // Update local state when initialPoll changes (for optimistic updates)
   useEffect(() => {
     setPoll(initialPoll);
-    // If poll is already finalized and we haven't shown the animation yet, 
-    // only reveal winner if we've already gone through the animation
-    if (initialPoll.finalized && (revealWinner || showBlackScreen || showWinnerText || showDots)) {
-      // Keep the current state - animation is already in progress or completed
-    } else if (initialPoll.finalized && !hasShownTieBreaker && !initialPoll.isTie) {
-      // Poll was already finalized on load, but we haven't shown animation yet
-      // Don't reveal winner immediately - let the animation play first
-      setRevealWinner(false);
+    
+    // If poll is finalized on page load, we need to show the winner
+    if (initialPoll.finalized) {
+      
+      // For non-tie scenarios, don't reveal immediately - let animation play
+      if (!initialPoll.isTie && !showBlackScreen && !showWinnerText && !showDots) {
+        // Don't reveal winner yet - let the animation sequence play
+      }
+      
+      // For tie scenarios with a winner - don't reveal immediately
+      if (initialPoll.isTie && initialPoll.tieBreakWinnerId && initialPoll.winner) {
+        // Don't reveal winner yet - let the animation play
+      }
     }
-  }, [initialPoll, revealWinner, showBlackScreen, showWinnerText, showDots, hasShownTieBreaker]);
+  }, [initialPoll]);
 
-  // Check if we should show tie-breaker animation
+  // Check if we should show tie-breaker animation or reveal winner
   useEffect(() => {
-    if (poll.isClosed && poll.isTie && poll.winner && !hasShownTieBreaker) {
-      setShowTieBreaker(true);
-      setHasShownTieBreaker(true);
+    
+    // Only trigger if we have authoritative data showing a tie-break winner
+    if (poll.isClosed && poll.isTie && poll.winner && poll.tieBreakWinnerId) {
+      if (!hasShownTieBreaker && !showTieBreaker) {
+        
+        // Ensure we don't reveal winner immediately
+        setRevealWinner(false);
+        setShowTieBreaker(true);
+        setHasShownTieBreaker(true);
+        
+        // Set a timer to reveal winner after animation duration
+        // This ensures synchronization across all browsers
+        const revealTimer = setTimeout(() => {
+          setShowTieBreaker(false);
+          setRevealWinner(true);
+        }, 6500); // Matches animation duration + buffer
+        
+        return () => clearTimeout(revealTimer);
+      }
     }
-  }, [poll.isClosed, poll.isTie, poll.winner, hasShownTieBreaker]);
+  }, [poll.isClosed, poll.isTie, poll.winner, poll.tieBreakWinnerId, hasShownTieBreaker, showTieBreaker]);
+
+  // Ensure winner is revealed when poll is finalized
+  useEffect(() => {
+    if (poll.finalized && poll.winner) {
+      // For non-tie scenarios, reveal after black screen animation
+      if (!poll.isTie && !showBlackScreen && !showWinnerText && !showDots && !revealWinner && hasStartedAnimation) {
+        setRevealWinner(true);
+      }
+      
+      // For tie scenarios, reveal after tie-breaker animation
+      if (poll.isTie && hasShownTieBreaker && !showTieBreaker && !revealWinner) {
+        setRevealWinner(true);
+      }
+    }
+  }, [poll.finalized, poll.winner, poll.isTie, showBlackScreen, showWinnerText, showDots, showTieBreaker, hasShownTieBreaker, revealWinner, hasStartedAnimation]);
 
   // Handle timer expiration animation
   useEffect(() => {
@@ -275,10 +330,11 @@ export default function PollResultsHybrid({
       poll.closesAt &&
       !poll.finalized &&
       !showBlackScreen &&
-      !revealWinner
+      !hasStartedAnimation
     ) {
       if (!poll.isTie) {
         // Timer expired and NOT a tie - show black screen
+        setHasStartedAnimation(true);
         setRevealWinner(false);
         setHideContent(true);
         setShowBlackScreen(true);
@@ -295,13 +351,19 @@ export default function PollResultsHybrid({
           1000,
         );
 
-        // Hide everything and reveal winner after 3.5 seconds
+        // After showing the text, transition to dots
+        setTimeout(() => {
+          setShowWinnerText(false);
+          setShowDots(true);
+        }, 3500);
+
+        // Hide everything and reveal winner after 5 seconds (consistent timing)
         revealWinnerTimerRef.current = setTimeout(() => {
           setShowBlackScreen(false);
-          setShowWinnerText(false);
+          setShowDots(false);
           setHideContent(false);
           setRevealWinner(true);
-        }, 3500);
+        }, 5000);
       } else {
         // For ties, don't reveal winner yet - wait for tie-breaker animation to complete
         setRevealWinner(false);
@@ -313,7 +375,7 @@ export default function PollResultsHybrid({
     poll.finalized,
     poll.isTie,
     showBlackScreen,
-    revealWinner,
+    hasStartedAnimation,
   ]);
 
   // Cleanup polling and timers on unmount
@@ -631,11 +693,8 @@ export default function PollResultsHybrid({
         winnerId={poll.winner?.id || ""}
         isVisible={showTieBreaker}
         onComplete={() => {
+          // Animation is done, hide it
           setShowTieBreaker(false);
-          // Reveal the winner after tie-breaker animation completes
-          if (poll.isTie && poll.winner) {
-            setRevealWinner(true);
-          }
         }}
         variant={tieBreakerVariant}
       />

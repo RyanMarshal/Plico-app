@@ -24,20 +24,29 @@ export function RealtimeConnectionMonitor() {
     const supabase = createSupabaseBrowserClient();
     let channel: RealtimeChannel | null = null;
     let pingInterval: NodeJS.Timeout | null = null;
+    let sendPingInterval: NodeJS.Timeout | null = null;
 
     const initializeMonitor = async () => {
       try {
-        // Create a dedicated monitoring channel
-        channel = supabase
-          .channel("connection-monitor")
-          .on("system", { event: "*" }, (payload) => {
+        
+        // Create a simple broadcast channel without authentication
+        channel = supabase.channel("connection-monitor-" + Date.now())
+          .on("presence", { event: "sync" }, () => {
             setConnectionStatus((prev) => ({
               ...prev,
               lastPing: new Date(),
               error: null,
             }));
           })
-          .subscribe((status) => {
+          .subscribe(async (status) => {
+            
+            if (status === "SUBSCRIBED" && channel) {
+              // Track presence to verify connection
+              await channel.track({
+                online_at: new Date().toISOString(),
+              });
+            }
+            
             setConnectionStatus((prev) => ({
               ...prev,
               isConnected: status === "SUBSCRIBED",
@@ -50,6 +59,15 @@ export function RealtimeConnectionMonitor() {
                     : null,
             }));
           });
+        
+        // Update presence every 10 seconds to keep connection alive
+        sendPingInterval = setInterval(async () => {
+          if (channel?.state === "joined") {
+            await channel.track({
+              online_at: new Date().toISOString(),
+            });
+          }
+        }, 10000);
 
         // Set up ping interval to check connection health
         pingInterval = setInterval(() => {
@@ -62,7 +80,11 @@ export function RealtimeConnectionMonitor() {
             }));
           }
         }, 5000); // Check every 5 seconds
+        
+        // Log the realtime connection URL
+        
       } catch (error) {
+        console.error("Error initializing monitor:", error);
         setConnectionStatus((prev) => ({
           ...prev,
           isConnected: false,
@@ -76,7 +98,11 @@ export function RealtimeConnectionMonitor() {
 
     return () => {
       if (pingInterval) clearInterval(pingInterval);
-      if (channel) supabase.removeChannel(channel);
+      if (sendPingInterval) clearInterval(sendPingInterval);
+      if (channel) {
+        channel.unsubscribe();
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
@@ -87,12 +113,18 @@ export function RealtimeConnectionMonitor() {
       window.location.search.includes("debug=true") ||
       sessionStorage.getItem("plico_debug_realtime") === "true");
 
-  // Only show in development, when debug mode is enabled, or if there's an error
+  // Only show in development when debug mode is enabled, or if there's an error
+  // Hide by default in development unless explicitly debugging
   if (
     process.env.NODE_ENV === "production" &&
     !isDebugMode &&
     !connectionStatus.error
   ) {
+    return null;
+  }
+  
+  // In development, only show if debug mode is enabled
+  if (process.env.NODE_ENV === "development" && !isDebugMode) {
     return null;
   }
 

@@ -129,9 +129,9 @@ export default function RootLayout({
                         className="flex items-center"
                       >
                         <img 
-                          src="/plico.png" 
+                          src="/plico_new.png" 
                           alt="Plico" 
-                          className="h-8 w-auto"
+                          className="h-10 sm:h-12 w-auto"
                         />
                       </a>
                     </div>

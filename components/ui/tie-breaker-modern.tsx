@@ -30,13 +30,24 @@ const TieBreakerModern = memo(function TieBreakerModern({
 
   useEffect(() => {
     if (isVisible) {
+      // Reset states when becoming visible
+      setCurrentPhase("intro");
+      setRevealedWinner(false);
+      
+      const timers: NodeJS.Timeout[] = [];
+      
       // Start animation sequence
-      setTimeout(() => setCurrentPhase("animation"), 500);
-      setTimeout(() => setCurrentPhase("reveal"), 3000);
-      setTimeout(() => {
+      timers.push(setTimeout(() => setCurrentPhase("animation"), 500));
+      timers.push(setTimeout(() => setCurrentPhase("reveal"), 3000));
+      timers.push(setTimeout(() => {
         setRevealedWinner(true);
-      }, 4000);
-      setTimeout(() => onComplete?.(), 6000);
+      }, 4000));
+      timers.push(setTimeout(() => onComplete?.(), 6000));
+      
+      // Cleanup timers on unmount or when isVisible changes
+      return () => {
+        timers.forEach(timer => clearTimeout(timer));
+      };
     }
   }, [isVisible, onComplete]);
 
@@ -244,7 +255,11 @@ const SlotMachineVariant = ({
   useEffect(() => {
     let spinInterval: NodeJS.Timeout | undefined;
     
-    if (currentPhase === "animation") {
+    if (currentPhase === "intro") {
+      // Reset state when starting
+      setSpinning(false);
+      setCurrentIndex(0);
+    } else if (currentPhase === "animation") {
       setSpinning(true);
       let spinCount = 0;
       spinInterval = setInterval(() => {
@@ -253,7 +268,7 @@ const SlotMachineVariant = ({
 
         // Slow down and land on winner
         if (spinCount > 20) {
-          clearInterval(spinInterval);
+          if (spinInterval) clearInterval(spinInterval);
           const winnerIndex = options.findIndex((opt) => opt.id === winnerId);
           setCurrentIndex(winnerIndex);
           setSpinning(false);
@@ -345,13 +360,16 @@ const VersusVariant = ({
   useEffect(() => {
     let battleInterval: NodeJS.Timeout | undefined;
     
-    if (currentPhase === "animation") {
+    if (currentPhase === "intro") {
+      // Reset state when starting
+      setBattleIntensity(0);
+    } else if (currentPhase === "animation") {
       let intensity = 0;
       battleInterval = setInterval(() => {
         intensity += 10;
         setBattleIntensity(intensity);
         if (intensity >= 100) {
-          clearInterval(battleInterval);
+          if (battleInterval) clearInterval(battleInterval);
         }
       }, 30);
     }
