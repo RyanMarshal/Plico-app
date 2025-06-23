@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCSRFToken } from "@/lib/csrf";
 
 export async function POST(
   request: NextRequest,
@@ -8,6 +9,10 @@ export async function POST(
   const { db } = await import("@/lib/db");
 
   try {
+    // Check CSRF token
+    const csrfError = requireCSRFToken(request);
+    if (csrfError) return csrfError;
+
     // Find the poll
     const poll = await db.plico.findUnique({
       where: { id: params.id },

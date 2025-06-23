@@ -108,8 +108,14 @@ export function RealtimeConnectionMonitor() {
           className={`w-full h-full rounded-lg flex items-center justify-center ${
             connectionStatus.isConnected ? "bg-green-500" : "bg-red-500"
           }`}
+          aria-label={
+            connectionStatus.isConnected
+              ? "Realtime connection: Connected. Click to expand details."
+              : "Realtime connection: Disconnected. Click to expand details."
+          }
+          aria-expanded={false}
         >
-          <span className="text-white text-xl">
+          <span className="text-white text-xl" aria-hidden="true">
             {connectionStatus.isConnected ? "✓" : "✗"}
           </span>
         </button>
@@ -120,6 +126,7 @@ export function RealtimeConnectionMonitor() {
             <button
               onClick={() => setIsMinimized(true)}
               className="text-gray-500 hover:text-gray-700"
+              aria-label="Minimize connection monitor"
             >
               ✕
             </button>
@@ -134,6 +141,8 @@ export function RealtimeConnectionMonitor() {
                     ? "text-green-600"
                     : "text-red-600"
                 }`}
+                aria-live="polite"
+                aria-label={`Connection status: ${connectionStatus.status}`}
               >
                 {connectionStatus.status}
               </span>
@@ -149,7 +158,11 @@ export function RealtimeConnectionMonitor() {
             )}
 
             {connectionStatus.error && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700">
+              <div 
+                className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700"
+                role="alert"
+                aria-live="assertive"
+              >
                 {connectionStatus.error}
               </div>
             )}

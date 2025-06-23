@@ -11,10 +11,10 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     // Log error to console in development
-    console.error('Global error:', error);
-    
+    console.error("Global error:", error);
+
     // In production, you could send this to an error tracking service
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === "production") {
       // Example: Send to error tracking service
       // logErrorToService({
       //   message: error.message,

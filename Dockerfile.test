@@ -1,0 +1,30 @@
+# Test stage
+FROM node:18-alpine AS tester
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci
+
+# Copy the rest of the application
+COPY . .
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Set test environment variables
+ENV NODE_ENV=test
+ENV NEXT_PUBLIC_SUPABASE_URL=https://test.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=test-key
+ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test
+
+# Run linting and type checking
+CMD ["sh", "-c", "npm run lint && npm run build"]

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PlicoWithResults } from "@/lib/types";
 import bcrypt from "bcryptjs";
+import { setCSRFToken } from "@/lib/csrf";
 
 export async function GET(
   request: NextRequest,
@@ -67,7 +68,10 @@ export async function GET(
     let verifiedAdmin = false;
     if (adminCookie && plico.creatorId) {
       try {
-        verifiedAdmin = await bcrypt.compare(adminCookie.value, plico.creatorId);
+        verifiedAdmin = await bcrypt.compare(
+          adminCookie.value,
+          plico.creatorId,
+        );
       } catch (error) {
         console.error("Error verifying admin status:", error);
         verifiedAdmin = false;
@@ -76,7 +80,7 @@ export async function GET(
 
     // Remove sensitive fields from the response
     const { creatorId: _, ...plicoWithoutCreatorId } = plico;
-    
+
     const result: PlicoWithResults = {
       ...plicoWithoutCreatorId,
       creatorId: null, // Hide the actual creatorId
@@ -96,7 +100,12 @@ export async function GET(
       `public, s-maxage=${cacheTime}, stale-while-revalidate`,
     );
 
-    return NextResponse.json(result, { headers });
+    const response = NextResponse.json(result, { headers });
+
+    // Set CSRF token if not already set
+    setCSRFToken(response);
+
+    return response;
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch poll" },

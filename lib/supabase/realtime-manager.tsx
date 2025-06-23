@@ -60,7 +60,10 @@ export function RealtimeManagerProvider({
   });
 
   const channelsRef = useRef<
-    Map<string, { channel: RealtimeChannel; config: ChannelConfig; refCount: number }>
+    Map<
+      string,
+      { channel: RealtimeChannel; config: ChannelConfig; refCount: number }
+    >
   >(new Map());
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isRetryingRef = useRef<Set<string>>(new Set());
@@ -75,6 +78,10 @@ export function RealtimeManagerProvider({
     const jitter = Math.random() * 0.3 * exponentialDelay; // 30% jitter
     return exponentialDelay + jitter;
   };
+
+  // Use refs to handle circular dependency between retryConnection and createSubscription
+  const retryConnectionRef = useRef<(config: ChannelConfig, attempt?: number) => void>();
+  const createSubscriptionRef = useRef<(config: ChannelConfig, retryAttempt?: number) => void>();
 
   const retryConnection = useCallback(
     (config: ChannelConfig, attempt: number = 0) => {
@@ -118,11 +125,12 @@ export function RealtimeManagerProvider({
 
         // Add a small delay before creating new subscription to let Safari clean up
         setTimeout(() => {
-          createSubscription(config, attempt + 1);
+          // Use ref to call createSubscription
+          createSubscriptionRef.current?.(config, attempt + 1);
         }, 100);
       }, delay);
     },
-    [],
+    [supabase],
   );
 
   const createSubscription = useCallback(
@@ -161,7 +169,8 @@ export function RealtimeManagerProvider({
             config.channelName,
           );
           channel.unsubscribe();
-          retryConnection(config, retryAttempt);
+          // Use ref to call retryConnection
+          retryConnectionRef.current?.(config, retryAttempt);
         }, 10000); // 10 second timeout for subscription
 
         channel.subscribe((status) => {
@@ -194,24 +203,36 @@ export function RealtimeManagerProvider({
 
             // Only retry if not already retrying
             if (!isRetryingRef.current.has(config.channelName)) {
-              retryConnection(config, retryAttempt);
+              // Use ref to call retryConnection
+              retryConnectionRef.current?.(config, retryAttempt);
             }
           }
         });
 
         // Store channel reference with initial ref count
-        channelsRef.current.set(config.channelName, { channel, config, refCount: 1 });
+        channelsRef.current.set(config.channelName, {
+          channel,
+          config,
+          refCount: 1,
+        });
 
         return channel;
       } catch (error) {
         console.error("[RealtimeManager] Error creating subscription:", error);
         if (!isRetryingRef.current.has(config.channelName)) {
-          retryConnection(config, retryAttempt);
+          // Use ref to call retryConnection
+          retryConnectionRef.current?.(config, retryAttempt);
         }
       }
     },
-    [state.retryCount, retryConnection],
+    [state.retryCount, supabase],
   );
+
+  // Update refs after functions are defined
+  useEffect(() => {
+    retryConnectionRef.current = retryConnection;
+    createSubscriptionRef.current = createSubscription;
+  }, [retryConnection, createSubscription]);
 
   const subscribe = useCallback(
     (config: ChannelConfig) => {
@@ -239,8 +260,8 @@ export function RealtimeManagerProvider({
         };
       }
 
-      // Create new subscription
-      createSubscription(config);
+      // Create new subscription using ref
+      createSubscriptionRef.current?.(config);
 
       // Return cleanup function
       return () => {
@@ -260,7 +281,7 @@ export function RealtimeManagerProvider({
         }
       };
     },
-    [createSubscription],
+    [supabase],
   );
 
   const forceReconnect = useCallback(() => {
@@ -282,17 +303,22 @@ export function RealtimeManagerProvider({
           e,
         );
       }
-      createSubscription(config);
+      // Use ref to call createSubscription
+      createSubscriptionRef.current?.(config);
     });
-  }, [createSubscription]);
+  }, [supabase]);
 
   // Cleanup on unmount
   useEffect(() => {
+    // Copy refs to avoid stale closure warnings
+    const channels = channelsRef.current;
+    const isRetrying = isRetryingRef.current;
+    
     return () => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      channelsRef.current.forEach(({ channel }) => {
+      channels.forEach(({ channel }) => {
         try {
           supabase.removeChannel(channel);
         } catch (e) {
@@ -302,10 +328,10 @@ export function RealtimeManagerProvider({
           );
         }
       });
-      channelsRef.current.clear();
-      isRetryingRef.current.clear();
+      channels.clear();
+      isRetrying.clear();
     };
-  }, []);
+  }, [supabase]);
 
   return (
     <RealtimeManagerContext.Provider
@@ -357,5 +383,6 @@ export function useRealtimeSubscription(config: ChannelConfig | null) {
         unsubscribe();
       }
     };
-  }, [config?.channelName]); // Only re-subscribe if channel name changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.channelName, subscribe]); // Only re-subscribe if channel name changes
 }

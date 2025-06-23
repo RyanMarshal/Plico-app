@@ -26,6 +26,8 @@ const TieBreakerWheel = memo(function TieBreakerWheel({
   );
 
   useEffect(() => {
+    let completeTimer: NodeJS.Timeout | undefined;
+
     if (isVisible && !isSpinning) {
       setIsSpinning(true);
       // Calculate final rotation to land on winner
@@ -37,10 +39,14 @@ const TieBreakerWheel = memo(function TieBreakerWheel({
       setRotation(totalRotation);
 
       // Call onComplete after animation
-      setTimeout(() => {
+      completeTimer = setTimeout(() => {
         onComplete?.();
       }, 4000);
     }
+
+    return () => {
+      if (completeTimer) clearTimeout(completeTimer);
+    };
   }, [isVisible, winnerIndex, segmentAngle, onComplete, isSpinning]);
 
   if (!isVisible) return null;

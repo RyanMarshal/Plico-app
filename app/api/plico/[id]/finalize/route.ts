@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { requireCSRFToken } from "@/lib/csrf";
 
 export async function POST(
   request: NextRequest,
@@ -8,9 +9,13 @@ export async function POST(
   // Dynamic import to avoid build-time evaluation
   const { db } = await import("@/lib/db");
   try {
+    // Check CSRF token
+    const csrfError = requireCSRFToken(request);
+    if (csrfError) return csrfError;
+
     // Get admin cookie for this poll
     const adminCookie = request.cookies.get(`plico_admin_${params.id}`);
-    
+
     if (!adminCookie) {
       return NextResponse.json(
         { error: "Only the poll creator can finalize results" },
@@ -28,7 +33,10 @@ export async function POST(
     }
 
     // Verify the admin key matches the hashed version
-    if (!poll.creatorId || !(await bcrypt.compare(adminCookie.value, poll.creatorId))) {
+    if (
+      !poll.creatorId ||
+      !(await bcrypt.compare(adminCookie.value, poll.creatorId))
+    ) {
       return NextResponse.json(
         { error: "Only the poll creator can finalize results" },
         { status: 403 },
@@ -66,7 +74,9 @@ export async function POST(
     if (winners.length > 1) {
       // Multiple winners - use deterministic selection based on poll ID
       const sortedWinners = winners.sort((a, b) => a.id.localeCompare(b.id));
-      const seed = poll.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const seed = poll.id
+        .split("")
+        .reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const selectedIndex = seed % sortedWinners.length;
       tieBreakWinnerId = sortedWinners[selectedIndex].id;
     }

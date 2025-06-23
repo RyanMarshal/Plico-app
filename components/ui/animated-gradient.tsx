@@ -1,11 +1,12 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 const AnimatedGradient = memo(function AnimatedGradient() {
   // Use CSS animations instead of state updates for better performance
   const gradientPosition = { x: 50, y: 50 };
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <>
@@ -18,14 +19,14 @@ const AnimatedGradient = memo(function AnimatedGradient() {
             opacity: 0.7,
             willChange: "transform",
           }}
-          animate={{
+          animate={shouldReduceMotion ? {} : {
             transform: [
               "scale(1) rotate(0deg)",
               "scale(1.1) rotate(180deg)",
               "scale(1) rotate(360deg)",
             ],
           }}
-          transition={{
+          transition={shouldReduceMotion ? {} : {
             duration: 20,
             repeat: Infinity,
             ease: "linear",
@@ -37,13 +38,13 @@ const AnimatedGradient = memo(function AnimatedGradient() {
         <div className="absolute -inset-[10px] opacity-30 overflow-hidden">
           <motion.div
             className="absolute inset-0"
-            animate={{
+            animate={shouldReduceMotion ? {} : {
               transform: [
                 "translateX(0%) translateY(0%)",
                 "translateX(50%) translateY(50%)",
               ],
             }}
-            transition={{
+            transition={shouldReduceMotion ? {} : {
               duration: 20,
               repeat: Infinity,
               repeatType: "reverse",

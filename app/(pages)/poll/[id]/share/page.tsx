@@ -6,7 +6,6 @@ import { PlicoWithResults } from "@/lib/types";
 import ShareButtons from "@/components/plico/ShareButtons";
 import { motion, AnimatePresence } from "framer-motion";
 import { MorphLoader } from "@/components/ui/plico-loader";
-import dynamic from "next/dynamic";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 import {
   CheckIcon,
@@ -14,15 +13,6 @@ import {
   ShareIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
-
-// Lazy load confetti for better performance
-const PhysicsConfetti = dynamic(
-  () => import("@/components/ui/physics-confetti"),
-  {
-    ssr: false,
-    loading: () => null,
-  },
-);
 
 // Helper function to get relative time
 function getRelativeTime(closesAt: Date): string {
@@ -127,13 +117,6 @@ export default function SharePage() {
 
   return (
     <>
-      <PhysicsConfetti
-        isActive={true}
-        particleCount={80}
-        duration={3000}
-        spread={30}
-        origin={{ x: 50, y: 10 }}
-      />
       <div className="container mx-auto py-12 px-4">
         <motion.div
           className="max-w-2xl mx-auto text-center"
@@ -166,12 +149,31 @@ export default function SharePage() {
               <CheckCircleIcon className="w-12 h-12 text-white" />
             </motion.div>
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent leading-tight pb-1"
+              className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 leading-tight pb-1 relative"
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              Let the voting begin! 🚀
+              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
+                Let the voting begin! 🚀
+              </span>
+              <motion.span
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent bg-clip-text text-transparent"
+                style={{
+                  backgroundSize: "50% 100%",
+                  WebkitBackgroundClip: "text",
+                }}
+                initial={{ backgroundPosition: "-100% 0" }}
+                animate={{ backgroundPosition: "200% 0" }}
+                transition={{
+                  duration: 8, // Even slower duration (8 seconds)
+                  ease: "linear",
+                  repeat: Infinity,
+                  repeatDelay: 3, // Keep pause the same (3 seconds)
+                }}
+              >
+                Let the voting begin! 🚀
+              </motion.span>
             </motion.h1>
             <motion.p
               className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 px-4 sm:px-0"
@@ -296,21 +298,16 @@ export default function SharePage() {
                 text={`Vote on my poll: "${poll.question}"`}
               />
             </motion.div>
+          </motion.div>
 
-            {/* Creator Control Tip */}
-            <motion.div
-              className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-            >
-              <p className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2">
-                <span className="text-lg">🔑</span>
-                <span>
-                  Keep this browser tab open to maintain creator controls for your poll
-                </span>
-              </p>
-            </motion.div>
+          {/* Gradient Separator Bar */}
+          <motion.div
+            className="w-full max-w-md mx-auto my-12"
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ delay: 0.8, duration: 0.6 }}
+          >
+            <div className="h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent rounded-full" />
           </motion.div>
 
           {/* Poll Details Section */}
@@ -362,7 +359,7 @@ export default function SharePage() {
           >
             <motion.button
               onClick={() => router.push(`/poll/${pollId}`)}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-6 sm:px-8 rounded-xl font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 min-h-[56px] active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-8 sm:px-10 rounded-xl font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 min-h-[56px] active:scale-[0.98]"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -378,12 +375,11 @@ export default function SharePage() {
 
             <motion.button
               onClick={() => router.push("/")}
-              className="w-full bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 py-4 px-6 sm:px-8 rounded-xl font-semibold text-base sm:text-lg border-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2 min-h-[56px] active:scale-[0.98]"
+              className="w-full bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 py-4 px-8 sm:px-10 rounded-xl font-semibold text-base sm:text-lg border-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2 min-h-[56px] active:scale-[0.98]"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span>✨</span>
-              <span>Create Another Plico</span>
+              <span>Create Another Plico ✨</span>
             </motion.button>
           </motion.div>
         </motion.div>

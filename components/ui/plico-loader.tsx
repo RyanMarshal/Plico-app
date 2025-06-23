@@ -17,7 +17,8 @@ export default function PlicoLoader({ size = "md", text }: PlicoLoaderProps) {
   const { box, dot } = sizes[size];
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4">
+    <div className="flex flex-col items-center justify-center gap-4" role="status" aria-live="polite">
+      <span className="sr-only">{text || "Loading..."}</span>
       <div className="relative" style={{ width: box, height: box }}>
         {/* Rotating container */}
         <motion.div
@@ -109,7 +110,8 @@ export function MorphLoader({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const boxSize = sizes[size];
 
   return (
-    <div className="relative" style={{ width: boxSize, height: boxSize }}>
+    <div className="relative" style={{ width: boxSize, height: boxSize }} role="status" aria-live="polite">
+      <span className="sr-only">Loading...</span>
       <svg viewBox="0 0 100 100" className="w-full h-full">
         <motion.path
           initial={{
@@ -161,7 +163,8 @@ export function MorphLoader({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
 // Bouncing dots loader
 export function BouncingLoader() {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2" role="status" aria-live="polite">
+      <span className="sr-only">Loading...</span>
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}

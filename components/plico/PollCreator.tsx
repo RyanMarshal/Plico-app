@@ -60,6 +60,18 @@ const QUICK_START_QUESTIONS = [
     suggestedOptions: getSmartDefaultTimes(),
   },
   {
+    text: "What's the official vibe for tonight?",
+    emoji: "👠",
+    description: "Set the dress code",
+    suggestedOptions: ["Casual", "Dressy", "Fancy AF", "Pajamas"],
+  },
+  {
+    text: "Which one of us would survive a zombie apocalypse?",
+    emoji: "🧟",
+    description: "Find out who's built different",
+    suggestedOptions: ["Me obviously", "Person 1", "Person 2", "Person 3"],
+  },
+  {
     text: "Which option do you prefer?",
     emoji: "🤔",
     description: "Quick A/B testing",
@@ -400,7 +412,8 @@ const PollCreator = memo(function PollCreator() {
           className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-6 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           size="lg"
         >
-          {isSubmitting ? "Creating your poll..." : "Create Poll 🚀"}
+          {/* Added 2 spaces before rocket emoji */}
+          {isSubmitting ? "Creating your poll..." : "Create Poll  🚀"}
         </Button>
       </motion.div>
     </motion.form>

@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import PollPageClient from "./poll-client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Get base URL for OpenGraph image generation
 function getBaseUrl() {
@@ -83,5 +84,9 @@ export async function generateMetadata({
 }
 
 export default function PollPage({ params }: { params: { id: string } }) {
-  return <PollPageClient />;
+  return (
+    <ErrorBoundary>
+      <PollPageClient />
+    </ErrorBoundary>
+  );
 }

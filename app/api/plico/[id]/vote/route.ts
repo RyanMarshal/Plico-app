@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { VoteRequest } from "@/lib/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limiter";
+import { requireCSRFToken } from "@/lib/csrf";
 
 export async function POST(
   request: NextRequest,
@@ -10,25 +11,33 @@ export async function POST(
   const { db } = await import("@/lib/db");
 
   try {
+    // Check CSRF token
+    const csrfError = requireCSRFToken(request);
+    if (csrfError) return csrfError;
+
     // Check rate limit
     const clientIp = getClientIp(request);
     const rateLimitKey = `vote:${params.id}:${clientIp}`;
-    const { allowed, remaining, resetAt } = checkRateLimit(rateLimitKey, 5, 60 * 1000); // 5 votes per minute per IP per poll
-    
+    const { allowed, remaining, resetAt } = checkRateLimit(
+      rateLimitKey,
+      5,
+      60 * 1000,
+    ); // 5 votes per minute per IP per poll
+
     if (!allowed) {
       return NextResponse.json(
-        { 
+        {
           error: "Too many votes. Please try again later.",
-          retryAfter: Math.ceil((resetAt - Date.now()) / 1000)
+          retryAfter: Math.ceil((resetAt - Date.now()) / 1000),
         },
-        { 
+        {
           status: 429,
           headers: {
-            'X-RateLimit-Limit': '5',
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': new Date(resetAt).toISOString(),
-            'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000))
-          }
+            "X-RateLimit-Limit": "5",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": new Date(resetAt).toISOString(),
+            "Retry-After": String(Math.ceil((resetAt - Date.now()) / 1000)),
+          },
         },
       );
     }
@@ -103,16 +112,19 @@ export async function POST(
       console.error("Failed to trigger real-time update:", realtimeError);
     }
 
-    return NextResponse.json({
-      success: true,
-      voteCount: updatedOption.voteCount,
-    }, {
-      headers: {
-        'X-RateLimit-Limit': '5',
-        'X-RateLimit-Remaining': String(remaining),
-        'X-RateLimit-Reset': new Date(resetAt).toISOString()
-      }
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        voteCount: updatedOption.voteCount,
+      },
+      {
+        headers: {
+          "X-RateLimit-Limit": "5",
+          "X-RateLimit-Remaining": String(remaining),
+          "X-RateLimit-Reset": new Date(resetAt).toISOString(),
+        },
+      },
+    );
   } catch (error) {
     console.error("Vote error:", error);
     return NextResponse.json(

@@ -4,10 +4,11 @@ import { useState, useCallback, memo } from "react";
 import { PlicoWithResults } from "@/lib/types";
 import { setVotedCookie } from "@/lib/cookies";
 import CountdownTimer from "./CountdownTimer";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { MorphLoader } from "@/components/ui/plico-loader";
 import dynamic from "next/dynamic";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { addCSRFHeader } from "@/lib/csrf-client";
 
 // Lazy load confetti for better performance
 const MicroConfetti = dynamic(() => import("@/components/ui/micro-confetti"), {
@@ -32,6 +33,7 @@ const PollView = memo(function PollView({
     y: number;
   } | null>(null);
   const { playPop } = useSoundEffects();
+  const shouldReduceMotion = useReducedMotion();
 
   const handleVote = useCallback(
     async (optionId: string, event: React.MouseEvent) => {
@@ -55,7 +57,7 @@ const PollView = memo(function PollView({
       try {
         const response = await fetch(`/api/plico/${poll.id}/vote`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: addCSRFHeader({ "Content-Type": "application/json" }),
           body: JSON.stringify({ optionId }),
         });
 
@@ -87,12 +89,33 @@ const PollView = memo(function PollView({
       transition={{ duration: 0.5 }}
     >
       <motion.h1
-        className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent"
+        className="text-3xl md:text-4xl font-bold text-center mb-8 relative"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        {poll.question}
+        <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent">
+          {poll.question}
+        </span>
+        {!shouldReduceMotion && (
+          <motion.span
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent bg-clip-text text-transparent"
+            style={{
+              backgroundSize: "50% 100%",
+              WebkitBackgroundClip: "text",
+            }}
+            initial={{ backgroundPosition: "-100% 0" }}
+            animate={{ backgroundPosition: "200% 0" }}
+            transition={{
+              duration: 8, // Even slower duration (8 seconds)
+              ease: "linear",
+              repeat: Infinity,
+              repeatDelay: 3, // Keep pause the same (3 seconds)
+            }}
+          >
+            {poll.question}
+          </motion.span>
+        )}
       </motion.h1>
 
       {poll.closesAt && (

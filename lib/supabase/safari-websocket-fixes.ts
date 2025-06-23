@@ -14,7 +14,9 @@ export function isSafari(): boolean {
  * Detects if the browser is iOS Safari
  */
 export function isIOSSafari(): boolean {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+  );
 }
 
 /**
@@ -26,7 +28,9 @@ export class VisibilityManager {
 
   constructor() {
     // Safari uses different visibility API events
-    document.addEventListener("visibilitychange", () => this.handleVisibilityChange());
+    document.addEventListener("visibilitychange", () =>
+      this.handleVisibilityChange(),
+    );
 
     // iOS Safari specific events
     if (isIOSSafari()) {

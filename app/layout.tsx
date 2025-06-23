@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Fredoka } from "next/font/google";
 import "./globals.css";
 import AnimatedGradient from "@/components/ui/animated-gradient-optimized";
 import { SoundProvider } from "@/contexts/SoundContext";
@@ -36,6 +36,12 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-fredoka",
 });
 
 export const metadata: Metadata = {
@@ -102,7 +108,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen antialiased`}>
+      <body
+        className={`${inter.className} ${fredoka.variable} min-h-screen antialiased`}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -118,9 +126,13 @@ export default function RootLayout({
                     <div className="flex items-center">
                       <a
                         href="/"
-                        className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
+                        className="flex items-center"
                       >
-                        Plico
+                        <img 
+                          src="/plico.png" 
+                          alt="Plico" 
+                          className="h-8 w-auto"
+                        />
                       </a>
                     </div>
                     <div className="flex items-center gap-2">

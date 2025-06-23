@@ -119,6 +119,9 @@ const CountdownTimer = memo(function CountdownTimer({
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
+        role="timer"
+        aria-live="polite"
+        aria-label={`Time remaining: ${formatTime()}`}
       >
         {formatTime()}
       </motion.p>

@@ -3,28 +3,17 @@
 import { useEffect, useState, useRef } from "react";
 import { PlicoWithResults } from "@/lib/types";
 import { useRealtimeSubscription } from "@/lib/supabase/realtime-manager";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import CountdownTimer from "./CountdownTimer";
 import dynamic from "next/dynamic";
 
-const TieBreakerWheel = dynamic(
-  () => import("@/components/ui/tie-breaker-wheel"),
+const TieBreakerModern = dynamic(
+  () => import("@/components/ui/tie-breaker-modern"),
   {
     ssr: false,
     loading: () => null,
   },
 );
-
-// Lazy load confetti for better performance
-let confettiPromise: Promise<any> | null = null;
-const launchConfetti = async (options: any) => {
-  if (!confettiPromise) {
-    confettiPromise = import("canvas-confetti");
-  }
-  const confettiModule = await confettiPromise;
-  const confetti = confettiModule.default;
-  confetti(options);
-};
 
 interface ResultsViewProps {
   poll: PlicoWithResults;
@@ -48,8 +37,32 @@ export default function PollResultsHybrid({
   const [isUsingPolling, setIsUsingPolling] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const realtimeFailureCount = useRef(0);
+  const winnerTextTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const revealWinnerTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showTieBreaker, setShowTieBreaker] = useState(false);
   const [hasShownTieBreaker, setHasShownTieBreaker] = useState(false);
+  const [tieBreakerVariant] = useState<"cards" | "slot" | "versus" | "quantum">(
+    () => {
+      const variants = ["cards", "slot", "versus", "quantum"] as const;
+      return variants[Math.floor(Math.random() * variants.length)];
+    },
+  );
+  const [showBlackScreen, setShowBlackScreen] = useState(false);
+  const [hideContent, setHideContent] = useState(false);
+  const [revealWinner, setRevealWinner] = useState(false);
+  const [showWinnerText, setShowWinnerText] = useState(false);
+  const [showDots, setShowDots] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
+
+  // Cleanup effect for showUpdateAnimation
+  useEffect(() => {
+    if (showUpdateAnimation) {
+      const timer = setTimeout(() => {
+        setShowUpdateAnimation(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showUpdateAnimation]);
 
   // Polling fallback function
   const fetchLatestResults = async () => {
@@ -125,7 +138,6 @@ export default function PollResultsHybrid({
 
             // Trigger update animation
             setShowUpdateAnimation(true);
-            setTimeout(() => setShowUpdateAnimation(false), 1000);
 
             // Update last update time
             setLastUpdateTime(new Date());
@@ -137,17 +149,6 @@ export default function PollResultsHybrid({
               totalVotes: newTotalVotes,
             };
           });
-
-          // Celebrate if this brings us to a milestone
-          const newVoteCount = payload.new.voteCount;
-          if (newVoteCount % 10 === 0 && newVoteCount > 0) {
-            // Fire confetti for every 10 votes
-            launchConfetti({
-              particleCount: 50,
-              spread: 60,
-              origin: { y: 0.8 },
-            });
-          }
         },
         onError: (error: Error) => {
           // Real-time error occurred
@@ -189,14 +190,51 @@ export default function PollResultsHybrid({
 
           // If poll was finalized, fetch full data including winner calculations
           if (payload.new.finalized || payload.new.tieBreakWinnerId) {
-            await fetchLatestResults();
+            // First fetch the latest results
+            const response = await fetch(`/api/plico/${poll.id}`);
+            if (response.ok) {
+              const updatedPoll = await response.json();
+              
+              // Check if it's a tie before updating state
+              if (!updatedPoll.isTie) {
+                // Only show black screen if NOT a tie
+                setRevealWinner(false);
+                setHideContent(true);
+                setShowBlackScreen(true);
 
-            // Show confetti for finalization
-            launchConfetti({
-              particleCount: 100,
-              spread: 70,
-              origin: { y: 0.6 },
-            });
+                // Clear any existing timers
+                if (winnerTextTimerRef.current)
+                  clearTimeout(winnerTextTimerRef.current);
+                if (revealWinnerTimerRef.current)
+                  clearTimeout(revealWinnerTimerRef.current);
+
+                // Show "And the winner is..." text after delay
+                winnerTextTimerRef.current = setTimeout(
+                  () => setShowWinnerText(true),
+                  1000,
+                );
+
+                // After showing the text, transition to dots
+                setTimeout(() => {
+                  setShowWinnerText(false);
+                  setShowDots(true);
+                }, 3500);
+
+                // Hide everything and reveal winner after dots
+                revealWinnerTimerRef.current = setTimeout(() => {
+                  setShowBlackScreen(false);
+                  setShowDots(false);
+                  setHideContent(false);
+                  setRevealWinner(true);
+                }, 5000);
+              } else {
+                // For ties, don't reveal winner yet - wait for tie-breaker animation to complete
+                setRevealWinner(false);
+              }
+              
+              // Now update the poll state
+              setPoll(updatedPoll);
+            }
           }
         },
         onError: (error: Error) => {
@@ -211,7 +249,16 @@ export default function PollResultsHybrid({
   // Update local state when initialPoll changes (for optimistic updates)
   useEffect(() => {
     setPoll(initialPoll);
-  }, [initialPoll]);
+    // If poll is already finalized and we haven't shown the animation yet, 
+    // only reveal winner if we've already gone through the animation
+    if (initialPoll.finalized && (revealWinner || showBlackScreen || showWinnerText || showDots)) {
+      // Keep the current state - animation is already in progress or completed
+    } else if (initialPoll.finalized && !hasShownTieBreaker && !initialPoll.isTie) {
+      // Poll was already finalized on load, but we haven't shown animation yet
+      // Don't reveal winner immediately - let the animation play first
+      setRevealWinner(false);
+    }
+  }, [initialPoll, revealWinner, showBlackScreen, showWinnerText, showDots, hasShownTieBreaker]);
 
   // Check if we should show tie-breaker animation
   useEffect(() => {
@@ -221,10 +268,62 @@ export default function PollResultsHybrid({
     }
   }, [poll.isClosed, poll.isTie, poll.winner, hasShownTieBreaker]);
 
-  // Cleanup polling on unmount
+  // Handle timer expiration animation
+  useEffect(() => {
+    if (
+      poll.isClosed &&
+      poll.closesAt &&
+      !poll.finalized &&
+      !showBlackScreen &&
+      !revealWinner
+    ) {
+      if (!poll.isTie) {
+        // Timer expired and NOT a tie - show black screen
+        setRevealWinner(false);
+        setHideContent(true);
+        setShowBlackScreen(true);
+
+        // Clear any existing timers
+        if (winnerTextTimerRef.current)
+          clearTimeout(winnerTextTimerRef.current);
+        if (revealWinnerTimerRef.current)
+          clearTimeout(revealWinnerTimerRef.current);
+
+        // Show text after delay
+        winnerTextTimerRef.current = setTimeout(
+          () => setShowWinnerText(true),
+          1000,
+        );
+
+        // Hide everything and reveal winner after 3.5 seconds
+        revealWinnerTimerRef.current = setTimeout(() => {
+          setShowBlackScreen(false);
+          setShowWinnerText(false);
+          setHideContent(false);
+          setRevealWinner(true);
+        }, 3500);
+      } else {
+        // For ties, don't reveal winner yet - wait for tie-breaker animation to complete
+        setRevealWinner(false);
+      }
+    }
+  }, [
+    poll.isClosed,
+    poll.closesAt,
+    poll.finalized,
+    poll.isTie,
+    showBlackScreen,
+    revealWinner,
+  ]);
+
+  // Cleanup polling and timers on unmount
   useEffect(() => {
     return () => {
       stopPolling();
+      // Clear animation timers
+      if (winnerTextTimerRef.current) clearTimeout(winnerTextTimerRef.current);
+      if (revealWinnerTimerRef.current)
+        clearTimeout(revealWinnerTimerRef.current);
     };
   }, []);
 
@@ -240,239 +339,402 @@ export default function PollResultsHybrid({
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6">
-      <motion.h2
-        className="text-3xl md:text-4xl font-bold text-center mb-8 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent"
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+      <motion.div
+        animate={{ opacity: hideContent ? 0 : 1 }}
+        transition={{ duration: 0.5 }}
       >
-        {poll.question}
-      </motion.h2>
-
-      {/* Countdown Timer */}
-      {poll.closesAt && !poll.isClosed && (
-        <div className="mb-6">
-          <CountdownTimer
-            closesAt={new Date(poll.closesAt)}
-            onExpire={onTimerExpire}
-          />
-        </div>
-      )}
-
-      {/* Connection Status */}
-      <AnimatePresence>
-        {connectionError && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`mb-4 p-3 ${
-              isUsingPolling
-                ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200"
-                : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200"
-            } border rounded-lg text-sm`}
-          >
-            <span className="inline-block animate-pulse mr-2">
-              {isUsingPolling ? "🔄" : "⚡"}
-            </span>
-            {connectionError}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Update Indicator */}
-      <AnimatePresence>
-        {showUpdateAnimation && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute top-4 right-4 px-3 py-1 bg-green-500 text-white rounded-full text-sm font-semibold"
-          >
-            Live Update!
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="space-y-4">
-        {poll.options.map((option, index) => {
-          const percentage =
-            totalVotes > 0 ? (option.voteCount / totalVotes) * 100 : 0;
-          const isWinning =
-            option.voteCount === maxVotes && option.voteCount > 0;
-          // Show crown for the winner (including tie-break winner) when poll is closed
-          const showCrown =
-            poll.isClosed &&
-            ((poll.winner && poll.winner.id === option.id) ||
-              (isWinning && !poll.isTie));
-
-          return (
-            <motion.div
-              key={option.id}
-              className={`relative ${
-                showCrown
-                  ? "ring-2 ring-green-400 dark:ring-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 shadow-lg shadow-green-200/50 dark:shadow-green-900/50 transform"
-                  : ""
-              }`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                scale: showCrown ? [1, 1.02, 1] : 1,
+        <motion.h2
+          className="text-3xl md:text-4xl font-bold text-center mb-8 relative"
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+        >
+          <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 dark:from-purple-400 dark:via-pink-400 dark:to-purple-400 bg-clip-text text-transparent">
+            {poll.question}
+          </span>
+          {!shouldReduceMotion && (
+            <motion.span
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent bg-clip-text text-transparent"
+              style={{
+                backgroundSize: "50% 100%",
+                WebkitBackgroundClip: "text",
               }}
+              initial={{ backgroundPosition: "-100% 0" }}
+              animate={{ backgroundPosition: "200% 0" }}
               transition={{
-                delay: index * 0.1,
-                scale: {
-                  delay: 0.5,
-                  duration: 0.5,
-                },
+                duration: 8, // Even slower duration (8 seconds)
+                ease: "linear",
+                repeat: Infinity,
+                repeatDelay: 3, // Keep pause the same (3 seconds)
               }}
             >
-              {/* Winner Badge */}
-              {showCrown && (
-                <motion.div
-                  className="absolute -top-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-3 py-1 rounded-full shadow-lg font-bold uppercase tracking-wider"
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{
-                    type: "spring",
-                    damping: 10,
-                    stiffness: 100,
-                    delay: 0.6,
-                  }}
-                >
-                  Winner
-                </motion.div>
-              )}
+              {poll.question}
+            </motion.span>
+          )}
+        </motion.h2>
 
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                  {option.text}
-                  {showCrown && totalVotes > 0 && (
-                    <motion.span
-                      className="ml-2 text-2xl"
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: Infinity,
-                        repeatDelay: 2,
-                      }}
-                    >
-                      👑
-                    </motion.span>
-                  )}
-                </span>
-                <span className="font-bold text-lg">
-                  {option.voteCount}
-                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                    ({Math.round(percentage)}%)
-                  </span>
-                </span>
-              </div>
+        {/* Countdown Timer */}
+        {poll.closesAt && !poll.isClosed && (
+          <div className="mb-6">
+            <CountdownTimer
+              closesAt={new Date(poll.closesAt)}
+              onExpire={onTimerExpire}
+            />
+          </div>
+        )}
 
-              <div className="relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-10 overflow-hidden shadow-inner">
-                <motion.div
-                  className={`absolute top-0 left-0 h-full rounded-full ${
-                    showCrown
-                      ? "bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-400/50"
-                      : isWinning
-                        ? "bg-gradient-to-r from-purple-500 to-pink-500"
-                        : "bg-gradient-to-r from-purple-400 to-pink-400"
-                  } shadow-lg`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${percentage}%` }}
-                  transition={{
-                    duration: 0.8,
-                    ease: "easeOut",
-                    delay: isOptimisticUpdate ? 0 : index * 0.1,
-                  }}
-                />
+        {/* Connection Status */}
+        <AnimatePresence>
+          {connectionError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`mb-4 p-3 ${
+                isUsingPolling
+                  ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                  : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200"
+              } border rounded-lg text-sm`}
+            >
+              <span
+                className={`inline-block mr-2 ${!shouldReduceMotion ? "animate-pulse" : ""}`}
+              >
+                {isUsingPolling ? "🔄" : "⚡"}
+              </span>
+              {connectionError}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                {/* Animated shimmer effect */}
-                {percentage > 0 && (
+        {/* Update Indicator */}
+        <AnimatePresence>
+          {showUpdateAnimation && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute top-4 right-4 px-3 py-1 bg-green-500 text-white rounded-full text-sm font-semibold"
+            >
+              Live Update!
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="space-y-4">
+          {poll.options.map((option, index) => {
+            const percentage =
+              totalVotes > 0 ? (option.voteCount / totalVotes) * 100 : 0;
+            const isWinning =
+              option.voteCount === maxVotes && option.voteCount > 0;
+            // Show crown for the winner (including tie-break winner) when poll is closed
+            const showCrown =
+              poll.isClosed &&
+              revealWinner &&
+              ((poll.winner && poll.winner.id === option.id) ||
+                (isWinning && !poll.isTie));
+
+            return (
+              <motion.div
+                key={option.id}
+                className={`relative ${
+                  showCrown
+                    ? "ring-2 ring-green-400 dark:ring-green-500 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 shadow-lg shadow-green-200/50 dark:shadow-green-900/50 transform"
+                    : ""
+                }`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  scale: showCrown ? [1, 1.02, 1] : 1,
+                }}
+                transition={{
+                  delay: index * 0.1,
+                  scale: {
+                    delay: 0.5,
+                    duration: 0.5,
+                  },
+                }}
+              >
+                {/* Winner Badge */}
+                {showCrown && (
                   <motion.div
-                    className="absolute top-0 left-0 h-full w-full opacity-30"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent, white, transparent)",
-                      backgroundSize: "200% 100%",
-                    }}
-                    animate={{
-                      backgroundPosition: ["200% 0", "-200% 0"],
-                    }}
+                    className="absolute -top-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-3 py-1 rounded-full shadow-lg font-bold uppercase tracking-wider"
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
                     transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 3,
+                      type: "spring",
+                      damping: 10,
+                      stiffness: 100,
+                      delay: 0.6,
+                    }}
+                  >
+                    Winner
+                  </motion.div>
+                )}
+
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
+                    {option.text}
+                    {showCrown &&
+                      totalVotes > 0 &&
+                      (shouldReduceMotion ? (
+                        <>
+                          <span className="ml-2 text-2xl" aria-hidden="true">👑</span>
+                          <span className="sr-only"> (Winner)</span>
+                        </>
+                      ) : (
+                        <>
+                          <motion.span
+                            className="ml-2 text-2xl"
+                            animate={{ rotate: [0, 10, -10, 0] }}
+                            transition={{
+                              duration: 0.5,
+                              repeat: Infinity,
+                              repeatDelay: 2,
+                            }}
+                            aria-hidden="true"
+                          >
+                            👑
+                          </motion.span>
+                          <span className="sr-only"> (Winner)</span>
+                        </>
+                      ))}
+                  </span>
+                  <span className="font-bold text-lg">
+                    {option.voteCount}
+                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                      ({Math.round(percentage)}%)
+                    </span>
+                  </span>
+                </div>
+
+                <div className="relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-10 overflow-hidden shadow-inner">
+                  <motion.div
+                    className={`absolute top-0 left-0 h-full rounded-full ${
+                      showCrown
+                        ? "bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg shadow-green-400/50"
+                        : isWinning
+                          ? "bg-gradient-to-r from-purple-500 to-pink-500"
+                          : "bg-gradient-to-r from-purple-400 to-pink-400"
+                    } shadow-lg`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${percentage}%` }}
+                    transition={{
+                      duration: 0.8,
+                      ease: "easeOut",
+                      delay: isOptimisticUpdate ? 0 : index * 0.1,
                     }}
                   />
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
 
-      <motion.div
-        className="text-center mt-8 space-y-2"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-          Total Votes: {totalVotes}
-        </p>
+                  {/* Animated shimmer effect */}
+                  {percentage > 0 && !shouldReduceMotion && (
+                    <motion.div
+                      className="absolute top-0 left-0 h-full w-full opacity-30"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent, white, transparent)",
+                        backgroundSize: "200% 100%",
+                      }}
+                      animate={{
+                        backgroundPosition: ["200% 0", "-200% 0"],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3,
+                      }}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
 
-        {lastUpdateTime && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Last updated: {lastUpdateTime.toLocaleTimeString()}
-            {isUsingPolling && " (polling)"}
+        <motion.div
+          className="text-center mt-8 space-y-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+            Total Votes: {totalVotes}
           </p>
+
+          {lastUpdateTime && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Last updated: {lastUpdateTime.toLocaleTimeString()}
+              {isUsingPolling && " (polling)"}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Finalize button */}
+        {!poll.finalized && !poll.closesAt && isCreator && totalVotes > 0 && (
+          <motion.div
+            className="text-center mt-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <motion.button
+              onClick={onFinalize}
+              className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              🏁 Finalize Results
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Creator Control Tip - Only show for polls without timer */}
+        {!poll.finalized && !poll.closesAt && isCreator && (
+          <motion.div
+            className="mt-4 mx-auto max-w-md p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-700"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            <p className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2">
+              <span className="text-lg">🔑</span>
+              <span>
+                Keep this browser tab open to maintain creator controls. Only
+                you can finalize the results.
+              </span>
+            </p>
+          </motion.div>
+        )}
+
+        {poll.isClosed && (
+          <motion.div
+            className="text-center mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.7 }}
+          >
+            <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+              {poll.finalized && revealWinner
+                ? "And the winner is... 💫"
+                : "⏰ Voting Has Ended"}
+            </p>
+          </motion.div>
         )}
       </motion.div>
 
-      {/* Finalize button */}
-      {!poll.finalized && !poll.closesAt && isCreator && totalVotes > 0 && (
-        <motion.div
-          className="text-center mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <motion.button
-            onClick={onFinalize}
-            className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform transition-all duration-200"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            🏁 Finalize Results
-          </motion.button>
-        </motion.div>
-      )}
-
-      {poll.isClosed && (
-        <motion.div
-          className="text-center mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.7 }}
-        >
-          <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-            {poll.finalized ? "🏆 Results Finalized" : "⏰ Voting Has Ended"}
-          </p>
-        </motion.div>
-      )}
-
-      {/* Tie-breaker wheel */}
-      <TieBreakerWheel
-        options={poll.options.map((opt) => ({
+      {/* Modern tie-breaker animation */}
+      <TieBreakerModern
+        options={poll.options.map((opt, index) => ({
           id: opt.id,
           text: opt.text,
-          color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+          color: `hsl(${(index * 360) / poll.options.length}, 70%, 50%)`,
         }))}
         winnerId={poll.winner?.id || ""}
         isVisible={showTieBreaker}
-        onComplete={() => setShowTieBreaker(false)}
+        onComplete={() => {
+          setShowTieBreaker(false);
+          // Reveal the winner after tie-breaker animation completes
+          if (poll.isTie && poll.winner) {
+            setRevealWinner(true);
+          }
+        }}
+        variant={tieBreakerVariant}
       />
+
+      {/* Black screen with winner announcement */}
+      <AnimatePresence>
+        {showBlackScreen && (
+          <motion.div
+            className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <AnimatePresence>
+              {showWinnerText && (
+                <motion.div
+                  className="text-5xl md:text-6xl lg:text-7xl font-black text-center tracking-tight font-[family:var(--font-fredoka)]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  {/* Split text animation */}
+                  {"And the winner is...".split(" ").map((word, wordIndex) => (
+                    <span key={wordIndex} className="inline-block mx-2">
+                      {word.split("").map((char, charIndex) => (
+                        <motion.span
+                          key={`${wordIndex}-${charIndex}`}
+                          className="inline-block bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent"
+                          initial={{
+                            opacity: 0,
+                            y: 50,
+                            rotateX: -90,
+                            scale: 0.5,
+                          }}
+                          animate={{
+                            opacity: 1,
+                            y: 0,
+                            rotateX: 0,
+                            scale: 1,
+                          }}
+                          transition={{
+                            type: "spring",
+                            damping: 12,
+                            stiffness: 200,
+                            delay: wordIndex * 0.3 + charIndex * 0.05,
+                          }}
+                          style={{
+                            textShadow: "0 0 40px rgba(168, 85, 247, 0.5)",
+                            display: "inline-block",
+                          }}
+                        >
+                          {char}
+                        </motion.span>
+                      ))}
+                    </span>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {/* Dots animation for suspense */}
+            <AnimatePresence>
+              {showDots && (
+                <motion.div
+                  className="text-6xl md:text-7xl lg:text-8xl font-bold"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {[".", ".", "."].map((dot, index) => (
+                    <motion.span
+                      key={index}
+                      className="inline-block mx-2 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ 
+                        opacity: [0, 1, 0],
+                        y: [10, -10, 10]
+                      }}
+                      transition={{
+                        duration: 0.8,
+                        repeat: Infinity,
+                        delay: index * 0.2,
+                        ease: "easeInOut"
+                      }}
+                      style={{
+                        textShadow: "0 0 40px rgba(168, 85, 247, 0.5)",
+                      }}
+                    >
+                      {dot}
+                    </motion.span>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

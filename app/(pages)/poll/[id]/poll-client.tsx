@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback, memo } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { PlicoWithResults } from "@/lib/types";
 import { hasVoted } from "@/lib/cookies";
 import PollView from "@/components/plico/PollView";
 import PollResultsHybrid from "@/components/plico/PollResultsHybrid";
 import { motion } from "framer-motion";
 import { MorphLoader } from "@/components/ui/plico-loader";
+import Link from "next/link";
 import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
+import { addCSRFHeader } from "@/lib/csrf-client";
 
 function PollPageClient() {
   const params = useParams();
+  const router = useRouter();
   const pollId = params.id as string;
   const [poll, setPoll] = useState<PlicoWithResults | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,13 +124,13 @@ function PollPageClient() {
     [poll, fetchPoll],
   );
 
-  const handleFinalize = async () => {
+  const handleFinalize = useCallback(async () => {
     if (!poll || !isCreator) return;
 
     try {
       const response = await fetch(`/api/plico/${pollId}/finalize`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: addCSRFHeader({ "Content-Type": "application/json" }),
         body: JSON.stringify({}), // No need to send anything, cookie handles auth
       });
 
@@ -142,14 +145,14 @@ function PollPageClient() {
     } catch (err) {
       alert("Failed to finalize poll");
     }
-  };
+  }, [poll, isCreator, pollId, fetchPoll]);
 
-  const handleTimerExpire = async () => {
+  const handleTimerExpire = useCallback(async () => {
     // Auto-finalize the poll when timer expires
     try {
       const response = await fetch(`/api/plico/${pollId}/auto-finalize`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: addCSRFHeader({ "Content-Type": "application/json" }),
       });
 
       if (response.ok) {
@@ -161,7 +164,7 @@ function PollPageClient() {
 
     // Refresh poll data to get updated isClosed status and tiebreaker result
     fetchPoll();
-  };
+  }, [pollId, fetchPoll]);
 
   if (loading) {
     return (
@@ -202,14 +205,15 @@ function PollPageClient() {
               : "Oops! Something went wrong"}
           </h1>
           <p className="text-gray-600 mb-8">{error}</p>
-          <motion.a
-            href="/"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Create a New Poll →
-          </motion.a>
+          <Link href="/">
+            <motion.span
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Create a New Poll →
+            </motion.span>
+          </Link>
         </motion.div>
       </div>
     );
@@ -246,7 +250,7 @@ function PollPageClient() {
         transition={{ delay: 0.3 }}
       >
         <motion.button
-          onClick={() => (window.location.href = `/poll/${pollId}/share`)}
+          onClick={() => router.push(`/poll/${pollId}/share`)}
           className="inline-flex items-center px-6 py-3 border-2 border-purple-300 text-base font-semibold rounded-xl text-purple-700 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all shadow-md hover:shadow-lg"
           whileHover={{ scale: 1.05, y: -2 }}
           whileTap={{ scale: 0.95 }}
@@ -270,17 +274,18 @@ function PollPageClient() {
         </motion.button>
 
         <div>
-          <motion.a
-            href="/"
-            className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold text-lg"
-            whileHover={{ scale: 1.05 }}
-          >
-            ✨ Create your own plico →
-          </motion.a>
+          <Link href="/" className="inline-block">
+            <motion.span
+              className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 font-bold text-lg"
+              whileHover={{ scale: 1.05 }}
+            >
+              ✨ Create your own Plico →
+            </motion.span>
+          </Link>
         </div>
       </motion.div>
     </div>
   );
 }
 
-export default memo(PollPageClient);
+export default PollPageClient;
