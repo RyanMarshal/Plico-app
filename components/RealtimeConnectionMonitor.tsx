@@ -113,13 +113,8 @@ export function RealtimeConnectionMonitor() {
       window.location.search.includes("debug=true") ||
       sessionStorage.getItem("plico_debug_realtime") === "true");
 
-  // Only show in development when debug mode is enabled, or if there's an error
-  // Hide by default in development unless explicitly debugging
-  if (
-    process.env.NODE_ENV === "production" &&
-    !isDebugMode &&
-    !connectionStatus.error
-  ) {
+  // Never show in production
+  if (process.env.NODE_ENV === "production") {
     return null;
   }
   

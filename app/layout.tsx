@@ -80,6 +80,14 @@ export const metadata: Metadata = {
     siteName: "Plico",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/api/og",
+        width: 1200,
+        height: 630,
+        alt: "Plico - Quick Polls",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -87,6 +95,7 @@ export const metadata: Metadata = {
     description:
       "The fastest, most fun way to make a group decision. Create a dead-simple poll in seconds and get a final answer, finally.",
     creator: "@plico",
+    images: ["/api/og"],
   },
 };
 

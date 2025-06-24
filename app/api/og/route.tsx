@@ -7,6 +7,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const question = searchParams.get("question") || "Create a Poll";
+    
+    // Get the base URL for the logo
+    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const logoUrl = `${baseUrl}/Plico_new.png`;
 
     return new ImageResponse(
       (
@@ -42,9 +48,19 @@ export async function GET(request: NextRequest) {
               style={{
                 display: "flex",
                 alignItems: "center",
+                gap: "16px",
                 marginBottom: "32px",
               }}
             >
+              <img
+                src={logoUrl}
+                alt="Plico"
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  objectFit: "contain",
+                }}
+              />
               <div
                 style={{
                   fontSize: "48px",
