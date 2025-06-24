@@ -323,12 +323,19 @@ export default function PollResultsHybrid({
       }
     }
     
-    // Mark that we're no longer on initial mount
-    isInitialMount.current = false;
+    // DON'T set isInitialMount to false here - let it persist for other useEffects
   }, [initialPoll]);
 
   // Check if we should show tie-breaker animation or reveal winner
   useEffect(() => {
+    // Skip animation entirely on initial mount of a finalized tie-breaker poll
+    if (isInitialMount.current && poll.finalized && poll.isTie && poll.tieBreakWinnerId) {
+      // Ensure we're in the final state (winner revealed, no animation)
+      setRevealWinner(true);
+      setShowTieBreaker(false);
+      setHasShownTieBreaker(true);
+      return; // Exit early to prevent animation
+    }
     
     // Only trigger if we have authoritative data showing a tie-break winner
     if (poll.isClosed && poll.isTie && poll.winner && poll.tieBreakWinnerId) {
@@ -349,7 +356,16 @@ export default function PollResultsHybrid({
         return () => clearTimeout(revealTimer);
       }
     }
-  }, [poll.isClosed, poll.isTie, poll.winner, poll.tieBreakWinnerId, hasShownTieBreaker, showTieBreaker]);
+  }, [poll.isClosed, poll.isTie, poll.winner, poll.tieBreakWinnerId, hasShownTieBreaker, showTieBreaker, poll.finalized]);
+
+  // Clear initial mount flag after all other effects have run
+  useEffect(() => {
+    // Use setTimeout to ensure this runs after all other useEffects
+    const timer = setTimeout(() => {
+      isInitialMount.current = false;
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Ensure winner is revealed when poll is finalized
   useEffect(() => {
