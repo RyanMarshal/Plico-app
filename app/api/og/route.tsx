@@ -7,14 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const question = searchParams.get("question") || "Create a Poll";
-    
-    // Get the base URL for the logo
-    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const logoUrl = `${baseUrl}/Plico_new.png`;
 
-    return new ImageResponse(
+    const response = new ImageResponse(
       (
         <div
           style={{
@@ -48,19 +42,28 @@ export async function GET(request: NextRequest) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "16px",
+                gap: "20px",
                 marginBottom: "32px",
               }}
             >
-              <img
-                src={logoUrl}
-                alt="Plico"
+              {/* Logo as styled text/shape */}
+              <div
                 style={{
                   width: "60px",
                   height: "60px",
-                  objectFit: "contain",
+                  background: "linear-gradient(135deg, #ec4899, #8b5cf6)",
+                  borderRadius: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  color: "white",
+                  boxShadow: "0 4px 12px rgba(236, 72, 153, 0.3)",
                 }}
-              />
+              >
+                P
+              </div>
               <div
                 style={{
                   fontSize: "48px",
@@ -153,6 +156,11 @@ export async function GET(request: NextRequest) {
         height: 630,
       },
     );
+    
+    // Set proper headers for Discord
+    response.headers.set('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
+    
+    return response;
   } catch (e) {
     console.error("OG Image generation failed:", e);
     return new Response("Failed to generate image", { status: 500 });

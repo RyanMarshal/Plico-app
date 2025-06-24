@@ -40,6 +40,8 @@ export default function PollResultsHybrid({
   const winnerTextTimerRef = useRef<NodeJS.Timeout | null>(null);
   const revealWinnerTimerRef = useRef<NodeJS.Timeout | null>(null);
   const dotsTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const finalizationAbortControllerRef = useRef<AbortController | null>(null);
   const [showTieBreaker, setShowTieBreaker] = useState(false);
   const [hasShownTieBreaker, setHasShownTieBreaker] = useState(false);
   // Use poll ID to deterministically select the same variant for all clients
@@ -63,6 +65,7 @@ export default function PollResultsHybrid({
   const [showDots, setShowDots] = useState(false);
   const [hasStartedAnimation, setHasStartedAnimation] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const isInitialMount = useRef(true);
 
   // Cleanup effect for showUpdateAnimation
   useEffect(() => {
@@ -77,13 +80,27 @@ export default function PollResultsHybrid({
   // Polling fallback function
   const fetchLatestResults = async () => {
     try {
-      const response = await fetch(`/api/plico/${poll.id}`);
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Create new abort controller for this request
+      abortControllerRef.current = new AbortController();
+      
+      const response = await fetch(`/api/plico/${poll.id}`, {
+        signal: abortControllerRef.current.signal,
+      });
       if (!response.ok) return;
 
       const data = await response.json();
       setPoll(data);
       setLastUpdateTime(new Date());
     } catch (error) {
+      // Ignore abort errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       // Polling error occurred
     }
   };
@@ -108,6 +125,11 @@ export default function PollResultsHybrid({
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
+    }
+    // Cancel any pending fetch request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     setIsUsingPolling(false);
   };
@@ -208,7 +230,17 @@ export default function PollResultsHybrid({
             // Fetch the complete, authoritative poll data from the API
             // This ensures all clients have the same data, including computed winner
             try {
-              const response = await fetch(`/api/plico/${poll.id}`);
+              // Cancel any previous finalization fetch
+              if (finalizationAbortControllerRef.current) {
+                finalizationAbortControllerRef.current.abort();
+              }
+              
+              // Create new abort controller for this request
+              finalizationAbortControllerRef.current = new AbortController();
+              
+              const response = await fetch(`/api/plico/${poll.id}`, {
+                signal: finalizationAbortControllerRef.current.signal,
+              });
               if (response.ok) {
                 const updatedPoll = await response.json();
                 
@@ -255,6 +287,10 @@ export default function PollResultsHybrid({
                 }
               }
             } catch (error) {
+              // Ignore abort errors
+              if (error instanceof Error && error.name === 'AbortError') {
+                return;
+              }
               // Error fetching poll data
             }
           }
@@ -274,17 +310,21 @@ export default function PollResultsHybrid({
     
     // If poll is finalized on page load, we need to show the winner
     if (initialPoll.finalized) {
-      
-      // For non-tie scenarios, don't reveal immediately - let animation play
-      if (!initialPoll.isTie && !showBlackScreen && !showWinnerText && !showDots) {
-        // Don't reveal winner yet - let the animation sequence play
-      }
-      
-      // For tie scenarios with a winner - don't reveal immediately
-      if (initialPoll.isTie && initialPoll.tieBreakWinnerId && initialPoll.winner) {
-        // Don't reveal winner yet - let the animation play
+      if (isInitialMount.current) {
+        // This is a page load of an already-finalized poll
+        setRevealWinner(true);
+        // Ensure animation flags are set to 'done' or 'not active' to prevent re-triggering
+        setHasStartedAnimation(true);
+        setShowBlackScreen(false);
+        setShowWinnerText(false);
+        setShowDots(false);
+        setShowTieBreaker(false);
+        setHasShownTieBreaker(true); // Mark tie-breaker animation as already handled
       }
     }
+    
+    // Mark that we're no longer on initial mount
+    isInitialMount.current = false;
   }, [initialPoll]);
 
   // Check if we should show tie-breaker animation or reveal winner
@@ -390,6 +430,11 @@ export default function PollResultsHybrid({
       if (revealWinnerTimerRef.current)
         clearTimeout(revealWinnerTimerRef.current);
       if (dotsTimerRef.current) clearTimeout(dotsTimerRef.current);
+      // Cancel any pending finalization fetch
+      if (finalizationAbortControllerRef.current) {
+        finalizationAbortControllerRef.current.abort();
+        finalizationAbortControllerRef.current = null;
+      }
     };
   }, []);
 

@@ -25,26 +25,32 @@ export function isIOSSafari(): boolean {
 export class VisibilityManager {
   private listeners: Set<(isVisible: boolean) => void> = new Set();
   private isVisible: boolean = true;
+  private boundHandleVisibilityChange: () => void;
+  private boundHandlePageHide: () => void;
+  private boundHandlePageShow: () => void;
+  private boundHandleBlur: () => void;
+  private boundHandleFocus: () => void;
 
   constructor() {
+    // Bind methods to preserve context
+    this.boundHandleVisibilityChange = () => this.handleVisibilityChange();
+    this.boundHandlePageHide = () => this.handleVisibilityChange(false);
+    this.boundHandlePageShow = () => this.handleVisibilityChange(true);
+    this.boundHandleBlur = () => this.handleVisibilityChange(false);
+    this.boundHandleFocus = () => this.handleVisibilityChange(true);
+
     // Safari uses different visibility API events
-    document.addEventListener("visibilitychange", () =>
-      this.handleVisibilityChange(),
-    );
+    document.addEventListener("visibilitychange", this.boundHandleVisibilityChange);
 
     // iOS Safari specific events
     if (isIOSSafari()) {
       // Page hide/show events are more reliable on iOS
-      window.addEventListener("pagehide", () =>
-        this.handleVisibilityChange(false),
-      );
-      window.addEventListener("pageshow", () =>
-        this.handleVisibilityChange(true),
-      );
+      window.addEventListener("pagehide", this.boundHandlePageHide);
+      window.addEventListener("pageshow", this.boundHandlePageShow);
 
       // Handle app switching
-      window.addEventListener("blur", () => this.handleVisibilityChange(false));
-      window.addEventListener("focus", () => this.handleVisibilityChange(true));
+      window.addEventListener("blur", this.boundHandleBlur);
+      window.addEventListener("focus", this.boundHandleFocus);
     }
   }
 
@@ -65,6 +71,24 @@ export class VisibilityManager {
 
   getIsVisible(): boolean {
     return this.isVisible;
+  }
+
+  /**
+   * Clean up all event listeners to prevent memory leaks
+   */
+  destroy() {
+    // Remove all event listeners
+    document.removeEventListener("visibilitychange", this.boundHandleVisibilityChange);
+    
+    if (isIOSSafari()) {
+      window.removeEventListener("pagehide", this.boundHandlePageHide);
+      window.removeEventListener("pageshow", this.boundHandlePageShow);
+      window.removeEventListener("blur", this.boundHandleBlur);
+      window.removeEventListener("focus", this.boundHandleFocus);
+    }
+    
+    // Clear all callbacks
+    this.listeners.clear();
   }
 }
 

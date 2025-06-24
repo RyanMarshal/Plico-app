@@ -52,7 +52,9 @@ export const metadata: Metadata = {
   description:
     "The fastest, most fun way to make a group decision. Create a dead-simple poll in seconds and get a final answer, finally.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
+    process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_BASE_URL || "https://sendaplico.com",
   ),
   keywords: [
     "polls",
