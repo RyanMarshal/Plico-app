@@ -39,6 +39,7 @@ export default function PollResultsHybrid({
   const realtimeFailureCount = useRef(0);
   const winnerTextTimerRef = useRef<NodeJS.Timeout | null>(null);
   const revealWinnerTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dotsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showTieBreaker, setShowTieBreaker] = useState(false);
   const [hasShownTieBreaker, setHasShownTieBreaker] = useState(false);
   // Use poll ID to deterministically select the same variant for all clients
@@ -229,6 +230,8 @@ export default function PollResultsHybrid({
                     clearTimeout(winnerTextTimerRef.current);
                   if (revealWinnerTimerRef.current)
                     clearTimeout(revealWinnerTimerRef.current);
+                  if (dotsTimerRef.current)
+                    clearTimeout(dotsTimerRef.current);
 
                   // Show "And the winner is..." text after delay
                   winnerTextTimerRef.current = setTimeout(
@@ -352,7 +355,7 @@ export default function PollResultsHybrid({
         );
 
         // After showing the text, transition to dots
-        setTimeout(() => {
+        dotsTimerRef.current = setTimeout(() => {
           setShowWinnerText(false);
           setShowDots(true);
         }, 3500);
@@ -386,6 +389,7 @@ export default function PollResultsHybrid({
       if (winnerTextTimerRef.current) clearTimeout(winnerTextTimerRef.current);
       if (revealWinnerTimerRef.current)
         clearTimeout(revealWinnerTimerRef.current);
+      if (dotsTimerRef.current) clearTimeout(dotsTimerRef.current);
     };
   }, []);
 
